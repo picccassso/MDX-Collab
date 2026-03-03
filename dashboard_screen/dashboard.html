@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDX Student Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0c0d10;
+            --bg2: #111318;
+            --bg3: #181b21;
+            --panel-bg: #1c1f27;
+            --panel-border: rgba(255, 255, 255, 0.07);
+            --panel-border2: rgba(255, 255, 255, 0.12);
+            --text-primary: #eaecf2;
+            --text-secondary: #9399b8;
+            --text-muted: #6e7491;
+            --accent: #d4002a;
+            --accent-hover: #b8001f;
+            --accent-dim: rgba(212, 0, 42, 0.12);
+            --accent-mid: rgba(212, 0, 42, 0.22);
+            --nav-height: 70px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ── Keyframes ── */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(28px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { text-shadow: 0 0 8px rgba(212, 0, 42, 0.5), 0 0 24px rgba(212, 0, 42, 0.2); }
+            50%       { text-shadow: 0 0 16px rgba(212, 0, 42, 0.9), 0 0 48px rgba(212, 0, 42, 0.4); }
+        }
+
+        @keyframes navShimmer {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+@keyframes qrFloat {
+            0%, 100% { transform: translateY(0px) scale(1);    box-shadow: 0 4px 20px rgba(255,255,255,0.15); }
+            50%       { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 36px rgba(255,255,255,0.28); }
+        }
+
+        @keyframes avatarSpin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        @keyframes barShimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes scanLine {
+            0%   { top: 0%; opacity: 1; }
+            100% { top: 100%; opacity: 0.3; }
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { border-color: rgba(212, 0, 42, 0.3); box-shadow: 0 0 8px rgba(212,0,42,0.1); }
+            50%       { border-color: rgba(212, 0, 42, 0.7); box-shadow: 0 0 20px rgba(212,0,42,0.3); }
+        }
+
+        /* ── Body & Canvas ── */
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow: auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Panel Timer Widget ── */
+        .panel-timer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .page-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .page-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+
+        .page-dot.active {
+            background: var(--accent);
+            transform: scale(1.4);
+            box-shadow: 0 0 6px rgba(212,0,42,0.7);
+        }
+
+        .timer-ring-wrap {
+            position: relative;
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+        }
+
+        .timer-ring-wrap svg {
+            transform: rotate(-90deg);
+            will-change: transform;
+        }
+
+        .timer-track {
+            fill: none;
+            stroke: rgba(255,255,255,0.07);
+            stroke-width: 3;
+        }
+
+        .timer-arc {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-dasharray: 75.4;
+            stroke-dashoffset: 0;
+            will-change: stroke-dashoffset;
+        }
+
+        .timer-num {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        nav {
+            height: var(--nav-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(12, 13, 16, 0.94);
+            backdrop-filter: blur(14px);
+            z-index: 10;
+            position: relative;
+            animation: fadeSlideUp 0.5s ease both;
+        }
+
+        nav::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                rgba(212,0,42,0.6) 30%,
+                rgba(212,0,42,0.9) 50%,
+                rgba(212,0,42,0.6) 70%,
+                transparent 100%);
+            background-size: 200% 100%;
+            animation: navShimmer 3s linear infinite;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 60px;
+            letter-spacing: -0.02em;
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .guest-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* ── Dashboard ── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 32px;
+            padding: 32px 40px 40px;
+            min-height: calc(100vh - var(--nav-height));
+            position: relative;
+            align-items: start;
+            z-index: 1;
+        }
+
+        /* ── Panels ── */
+        .panel {
+            min-width: 0;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border2);
+            border-radius: 10px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: visible;
+            backdrop-filter: blur(16px);
+            opacity: 0;
+            animation: fadeSlideUp 0.6s ease forwards;
+        }
+
+        #events-panel     { animation-delay: 0.15s; }
+        #collabs-panel    { animation-delay: 0.28s; }
+        #engagement-panel { animation-delay: 0.41s; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            white-space: nowrap;
+        }
+
+        .panel-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .panel-content {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            height: auto;
+            overflow: visible;
+        }
+
+        .items-list {
+            flex: 1;
+            overflow: visible;
+            padding-right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-bottom: 0;
+            will-change: opacity, transform;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .items-list.fading-out {
+            opacity: 0;
+            transform: translateY(-8px);
+            pointer-events: none;
+        }
+
+        .items-list.fading-in {
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+        }
+
+        .items-list.fading-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── Item Cards ── */
+        .item-card {
+            background: var(--bg3);
+            padding: 16px;
+            border-radius: 0;
+            border: 1px solid var(--panel-border);
+            border-left: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Only animate on initial page load (not dynamically rendered cards) */
+        .items-list.initial .item-card {
+            opacity: 0;
+            animation: fadeSlideUp 0.5s ease forwards;
+        }
+        .items-list.initial .item-card:nth-child(1) { animation-delay: 0.4s; }
+        .items-list.initial .item-card:nth-child(2) { animation-delay: 0.5s; }
+        .items-list.initial .item-card:nth-child(3) { animation-delay: 0.6s; }
+        .items-list.initial .item-card:nth-child(4) { animation-delay: 0.7s; }
+
+        .item-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .item-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bg3); }
+
+        /* ── Poll ── */
+        .poll-section {
+            margin-bottom: 0;
+        }
+
+        .poll-question {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .poll-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .poll-option {
+            background: var(--bg3);
+            border: 1px solid var(--panel-border);
+            padding: 12px 16px;
+            cursor: default;
+            pointer-events: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .poll-option.voted {
+            pointer-events: none;
+        }
+
+        .poll-option-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(212,0,42,0.18) 0%, rgba(212,0,42,0.28) 100%);
+            background-size: 200% 100%;
+            z-index: 0;
+            transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* shimmer sweep after bar fills */
+        .poll-option-bar.filled {
+            animation: barShimmer 1.8s ease 0.9s 1;
+            background: linear-gradient(
+                90deg,
+                rgba(212,0,42,0.18) 0%,
+                rgba(212,0,42,0.28) 40%,
+                rgba(255,80,80,0.45) 50%,
+                rgba(212,0,42,0.28) 60%,
+                rgba(212,0,42,0.18) 100%
+            );
+            background-size: 200% 100%;
+        }
+
+        .poll-option-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .poll-option-text {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .poll-option-percent {
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        .poll-votes {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ── Engagement Panel ── */
+        #engagement-panel .panel-content {
+            overflow: visible !important;
+            padding-right: 0;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 28px !important;
+            height: auto !important;
+            align-items: start !important;
+        }
+
+        /* ── QR Code ── */
+        .qr-section {
+            border-left: 1px solid var(--panel-border);
+            padding-left: 28px;
+        }
+
+        .qr-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            padding-bottom: 8px;
+            width: 100%;
+        }
+
+        .qr-code {
+            width: 80%;
+            min-width: 140px;
+            max-width: 220px;
+            aspect-ratio: 1 / 1;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            animation: qrFloat 4s ease-in-out infinite;
+            box-shadow: 0 4px 20px rgba(255,255,255,0.15);
+        }
+
+        /* Scan line effect over QR */
+        .qr-code::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(212,0,42,0.8), transparent);
+            animation: scanLine 2.5s linear infinite;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .qr-code svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .qr-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* ── Mobile ── */
+        @media (max-width: 900px) {
+            nav { padding: 0 20px; }
+
+            .dashboard {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px 16px 28px;
+            }
+
+            .panel { padding: 20px; }
+
+            .poll-option-content { gap: 12px; }
+
+            #engagement-panel .panel-content {
+                grid-template-columns: 1fr !important;
+            }
+
+            .qr-section {
+                border-left: none;
+                border-top: 1px solid var(--panel-border);
+                padding-left: 0;
+                padding-top: 20px;
+            }
+
+            .qr-code {
+                width: min(70%, 280px);
+                min-width: 160px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Particle canvas sits behind everything -->
+    <canvas id="particle-canvas"></canvas>
+
+    <nav>
+        <div class="logo">MDX<span style="color:var(--accent)">.</span></div>
+        <div class="guest-avatar">G</div>
+    </nav>
+
+    <div class="dashboard" id="dashboard">
+
+        <div class="panel" id="events-panel">
+            <div class="panel-header">
+                <div class="panel-title">Events</div>
+                <div class="panel-timer">
+                    <div class="page-dots" id="page-dots-events"></div>
+                    <div class="timer-ring-wrap">
+                        <svg width="30" height="30" viewBox="0 0 30 30">
+                            <circle class="timer-track" cx="15" cy="15" r="12"/>
+                            <circle class="timer-arc" cx="15" cy="15" r="12" id="timer-arc-events"/>
+                        </svg>
+                        <div class="timer-num" id="timer-num-events">10</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-content">
+                <div class="items-list initial" id="events-list"></div>
+            </div>
+        </div>
+
+        <div class="panel" id="collabs-panel">
+            <div class="panel-header">
+                <div class="panel-title">Collaborations</div>
+                <div class="panel-timer">
+                    <div class="page-dots" id="page-dots-collabs"></div>
+                    <div class="timer-ring-wrap">
+                        <svg width="30" height="30" viewBox="0 0 30 30">
+                            <circle class="timer-track" cx="15" cy="15" r="12"/>
+                            <circle class="timer-arc" cx="15" cy="15" r="12" id="timer-arc-collabs"/>
+                        </svg>
+                        <div class="timer-num" id="timer-num-collabs">10</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-content">
+                <div class="items-list initial" id="collabs-list"></div>
+            </div>
+        </div>
+
+        <div class="panel" id="engagement-panel">
+            <div class="panel-header">
+                <div class="panel-title">Engagement</div>
+            </div>
+            <div class="panel-content">
+                <!-- Poll Section -->
+                <div class="poll-section">
+                    <div class="poll-question">What's your favorite campus event type?</div>
+                    <div class="poll-options" id="poll-options">
+                        <div class="poll-option">
+                            <div class="poll-option-bar" id="bar-0" style="width: 0%"></div>
+                            <div class="poll-option-content">
+                                <span class="poll-option-text">Social Mixers</span>
+                                <span class="poll-option-percent" id="percent-0"></span>
+                            </div>
+                        </div>
+                        <div class="poll-option">
+                            <div class="poll-option-bar" id="bar-1" style="width: 0%"></div>
+                            <div class="poll-option-content">
+                                <span class="poll-option-text">Tech Workshops</span>
+                                <span class="poll-option-percent" id="percent-1"></span>
+                            </div>
+                        </div>
+                        <div class="poll-option">
+                            <div class="poll-option-bar" id="bar-2" style="width: 0%"></div>
+                            <div class="poll-option-content">
+                                <span class="poll-option-text">Career Fairs</span>
+                                <span class="poll-option-percent" id="percent-2"></span>
+                            </div>
+                        </div>
+                        <div class="poll-option">
+                            <div class="poll-option-bar" id="bar-3" style="width: 0%"></div>
+                            <div class="poll-option-content">
+                                <span class="poll-option-text">Hackathons</span>
+                                <span class="poll-option-percent" id="percent-3"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="poll-votes" id="poll-votes">Loading votes...</div>
+                </div>
+
+                <!-- QR Code Section -->
+                <div class="qr-section">
+                    <div class="qr-title">Vote in This Poll</div>
+                    <div class="qr-container">
+                        <div class="qr-code">
+                            <!-- Mock QR Code SVG -->
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="100" height="100" fill="white"/>
+                                <rect x="5" y="5" width="25" height="25" fill="#0c0d10"/>
+                                <rect x="8" y="8" width="19" height="19" fill="white"/>
+                                <rect x="11" y="11" width="13" height="13" fill="#0c0d10"/>
+                                <rect x="70" y="5" width="25" height="25" fill="#0c0d10"/>
+                                <rect x="73" y="8" width="19" height="19" fill="white"/>
+                                <rect x="76" y="11" width="13" height="13" fill="#0c0d10"/>
+                                <rect x="5" y="70" width="25" height="25" fill="#0c0d10"/>
+                                <rect x="8" y="73" width="19" height="19" fill="white"/>
+                                <rect x="11" y="76" width="13" height="13" fill="#0c0d10"/>
+                                <rect x="35" y="5" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="45" y="5" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="55" y="5" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="35" y="15" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="50" y="15" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="60" y="15" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="35" y="25" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="45" y="25" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="55" y="25" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="5" y="35" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="15" y="35" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="25" y="35" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="5" y="45" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="20" y="45" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="5" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="15" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="25" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="35" y="35" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="45" y="35" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="55" y="35" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="65" y="35" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="35" y="45" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="50" y="45" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="60" y="45" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="70" y="45" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="35" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="45" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="55" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="65" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="75" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="85" y="55" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="70" y="70" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="80" y="70" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="90" y="70" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="70" y="80" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="85" y="80" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="70" y="90" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="80" y="90" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="90" y="90" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="35" y="70" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="45" y="70" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="55" y="70" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="40" y="80" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="50" y="80" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="60" y="80" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="35" y="90" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="50" y="90" width="5" height="5" fill="#0c0d10"/>
+                                <rect x="60" y="90" width="5" height="5" fill="#0c0d10"/>
+                            </svg>
+                        </div>
+                        <div class="qr-label">Scan this QR code to vote in the poll.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <script>
+        /* ── Particle Background ── */
+        (function () {
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            let W, H, particles = [];
+
+            function resize() {
+                W = canvas.width  = window.innerWidth;
+                H = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            function rand(min, max) { return Math.random() * (max - min) + min; }
+
+            function createParticle() {
+                return {
+                    x: rand(0, W),
+                    y: rand(H * 0.2, H),
+                    r: rand(1, 2.8),
+                    speed: rand(0.3, 1.1),
+                    opacity: rand(0.08, 0.28),
+                    drift: rand(-0.25, 0.25),
+                    // mix of red and white particles
+                    color: Math.random() < 0.35
+                        ? `rgba(212,0,42,`
+                        : `rgba(234,236,242,`
+                };
+            }
+
+            for (let i = 0; i < 55; i++) {
+                const p = createParticle();
+                p.y = rand(0, H); // spread on init
+                particles.push(p);
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, W, H);
+                for (const p of particles) {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color + p.opacity + ')';
+                    ctx.fill();
+
+                    p.y -= p.speed;
+                    p.x += p.drift;
+                    p.opacity -= 0.0006;
+
+                    if (p.y < -10 || p.opacity <= 0) {
+                        Object.assign(p, createParticle());
+                        p.y = H + 10;
+                    }
+                }
+                requestAnimationFrame(draw);
+            }
+            draw();
+        })();
+
+        /* ── Data ── */
+        const EVENTS = [
+            { title: 'Welcome Week Mixer',       desc: 'Join us at the quad for free food and music. Meet new students!' },
+            { title: 'Tech Career Fair',          desc: 'Top London tech companies are visiting campus today.' },
+            { title: 'Hackathon 2026',            desc: '48-hour coding marathon with amazing prizes.' },
+            { title: 'Design Workshop',           desc: 'Learn Figma basics from industry experts.' },
+            { title: 'Guest Lecture: AI Ethics',  desc: 'Dr. Sarah Chen explores the moral challenges of modern AI systems.' },
+            { title: 'Photography Walk',          desc: 'Campus photo tour led by the MDX Photography Society.' },
+            { title: 'Startup Pitch Night',       desc: 'Student entrepreneurs pitch live to a panel of real investors.' },
+            { title: 'Mental Health Awareness Day', desc: 'Free workshops, yoga sessions, and counselling drop-ins all day.' },
+            { title: 'International Food Fest',   desc: 'Taste dishes from 30+ countries prepared by fellow students.' },
+            { title: 'Open Mic Night',            desc: 'Showcase your talent — comedy, music, spoken word. All welcome.' },
+            { title: 'CV & Interview Bootcamp',   desc: 'Hands-on prep session with MDX careers advisors and alumni.' },
+            { title: 'Robotics Demo Day',         desc: 'Engineering students unveil their semester-long robot projects.' },
+        ];
+
+        const COLLABS = [
+            { title: 'AI Study Group',            desc: 'Looking for partners to build a deep learning model for the final project.' },
+            { title: 'Startup Co-founder Needed', desc: 'Business student seeking a developer for a fintech app idea.' },
+            { title: 'Film Short Crew Wanted',    desc: 'Director needs a cinematographer and sound designer for a 10-min short.' },
+            { title: 'Game Jam Team',             desc: 'Forming a 4-person team for the upcoming 72-hour global game jam.' },
+            { title: 'Research Paper — Cyber',    desc: 'CS student looking for a co-author on a network security paper.' },
+            { title: 'UX Research Partner',       desc: 'Need someone to run usability tests for a mobile health app.' },
+            { title: 'Music Production Collab',   desc: 'Producer looking for vocalists and a mixing engineer.' },
+            { title: 'Social Enterprise Team',    desc: 'Building a platform to connect food-surplus cafes with students.' },
+        ];
+
+        const PAGE_SIZE = 4;
+        const TICK = 10;
+        const CIRC = 2 * Math.PI * 12; // r=12 → 75.4
+
+        function getPages(items) {
+            const out = [];
+            for (let i = 0; i < items.length; i += PAGE_SIZE) out.push(items.slice(i, i + PAGE_SIZE));
+            return out;
+        }
+
+        const eventPages  = getPages(EVENTS);
+        const collabPages = getPages(COLLABS);
+        const totalPages  = Math.max(eventPages.length, collabPages.length);
+        let currentPage   = 0;
+        let timeLeft      = TICK;
+
+        const arcEls = [
+            document.getElementById('timer-arc-events'),
+            document.getElementById('timer-arc-collabs'),
+        ];
+        const numEls = [
+            document.getElementById('timer-num-events'),
+            document.getElementById('timer-num-collabs'),
+        ];
+
+        function setArcs(t) {
+            const frac   = t / TICK;
+            const offset = CIRC * (1 - frac);
+            const r = Math.round(212 * (1 - frac) + 80 * frac);
+            const g = Math.round(180 * frac);
+            const color  = `rgb(${r},${g},42)`;
+            const glow   = `drop-shadow(0 0 ${2 + (TICK - t) * 0.4}px rgba(${r},${g},42,0.9))`;
+            arcEls.forEach(el => {
+                el.style.strokeDashoffset = offset;
+                el.style.stroke = color;
+                el.style.filter = glow;
+            });
+            numEls.forEach(el => el.textContent = t);
+        }
+
+        function resetArcs() {
+            arcEls.forEach(el => {
+                el.style.transition = 'none';
+                el.style.strokeDashoffset = 0;
+            });
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                arcEls.forEach(el => {
+                    el.style.transition = 'stroke-dashoffset 1s linear, stroke 0.4s ease, filter 0.4s ease';
+                });
+            }));
+        }
+
+        function buildDots(containerId, total, current) {
+            const el = document.getElementById(containerId);
+            el.innerHTML = Array.from({ length: total }, (_, i) =>
+                `<div class="page-dot${i === current ? ' active' : ''}"></div>`
+            ).join('');
+        }
+
+        function updateDots(page) {
+            ['page-dots-events', 'page-dots-collabs'].forEach(id => {
+                document.getElementById(id).querySelectorAll('.page-dot').forEach((d, i) => {
+                    d.classList.toggle('active', i === page);
+                });
+            });
+        }
+
+        function renderCards(listEl, items) {
+            listEl.innerHTML = items.map(item => `
+                <div class="item-card">
+                    <div class="item-title">${item.title}</div>
+                    <div class="item-desc">${item.desc}</div>
+                </div>`).join('');
+        }
+
+        function showPage(page, animate) {
+            const eList = document.getElementById('events-list');
+            const cList = document.getElementById('collabs-list');
+            const ep = eventPages[page % eventPages.length];
+            const cp = collabPages[page % collabPages.length];
+
+            if (!animate) {
+                renderCards(eList, ep);
+                renderCards(cList, cp);
+                updateDots(page);
+                return;
+            }
+
+            // Step 1: fade + slide out
+            eList.classList.add('fading-out');
+            cList.classList.add('fading-out');
+
+            setTimeout(() => {
+                // Step 2: swap content, position below invisibly
+                renderCards(eList, ep);
+                renderCards(cList, cp);
+                updateDots(page);
+                eList.classList.remove('fading-out');
+                cList.classList.remove('fading-out');
+                eList.classList.add('fading-in');
+                cList.classList.add('fading-in');
+
+                // Trigger reflow then slide in
+                eList.offsetHeight;
+                requestAnimationFrame(() => {
+                    eList.classList.add('visible');
+                    cList.classList.add('visible');
+                });
+
+                setTimeout(() => {
+                    eList.classList.remove('fading-in', 'visible');
+                    cList.classList.remove('fading-in', 'visible');
+                }, 300);
+            }, 250);
+        }
+
+        // rAF-based timer for smooth ticking
+        let lastTick = null;
+        function tick(now) {
+            if (lastTick === null) lastTick = now;
+            if (now - lastTick >= 1000) {
+                lastTick += 1000;
+                timeLeft--;
+                setArcs(timeLeft);
+                if (timeLeft <= 0) {
+                    currentPage = (currentPage + 1) % totalPages;
+                    showPage(currentPage, true);
+                    timeLeft = TICK;
+                    resetArcs();
+                }
+            }
+            requestAnimationFrame(tick);
+        }
+
+        /* ── Poll ── */
+        const pollVotes = [45, 32, 28, 15];
+
+        function initPoll() {
+            const total = pollVotes.reduce((a, b) => a + b, 0);
+            pollVotes.forEach((votes, index) => {
+                const percent = total > 0 ? Math.round((votes / total) * 100) : 0;
+                const percentLabel = document.getElementById(`percent-${index}`);
+                if (percentLabel) percentLabel.textContent = `${percent}%`;
+                const option = document.querySelector(`.poll-option:nth-child(${index + 1})`);
+                if (option) option.classList.add('voted');
+            });
+            setTimeout(() => {
+                pollVotes.forEach((votes, index) => {
+                    const percent = total > 0 ? Math.round((votes / total) * 100) : 0;
+                    const bar = document.getElementById(`bar-${index}`);
+                    if (bar) {
+                        bar.style.width = `${percent}%`;
+                        setTimeout(() => bar.classList.add('filled'), 950);
+                    }
+                });
+            }, 700);
+            const votesLabel = document.getElementById('poll-votes');
+            if (votesLabel) votesLabel.textContent = `${total.toLocaleString()} votes cast`;
+        }
+
+        /* ── Init ── */
+        buildDots('page-dots-events',  totalPages, 0);
+        buildDots('page-dots-collabs', totalPages, 0);
+        showPage(0, false);
+        // Set arc transitions after initial render
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            arcEls.forEach(el => {
+                el.style.transition = 'stroke-dashoffset 1s linear, stroke 0.4s ease, filter 0.4s ease';
+            });
+            setArcs(TICK);
+            requestAnimationFrame(tick);
+        }));
+        initPoll();
+    </script>
+</body>
+
+</html>
