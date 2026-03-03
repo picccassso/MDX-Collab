@@ -35,8 +35,11 @@ async function ensureUserDoc(user: User): Promise<UserProfile> {
 }
 
 export const AuthService = {
-  signIn: (email: string, password: string) =>
-    signInWithEmailAndPassword(auth, email, password),
+  signIn: async (email: string, password: string) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    await ensureUserDoc(cred.user);
+    return cred;
+  },
 
   signUp: async (email: string, password: string, username?: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -55,6 +58,8 @@ export const AuthService = {
     await ensureUserDoc(cred.user);
     return cred;
   },
+
+  ensureUserProfile: async (user: User): Promise<UserProfile> => ensureUserDoc(user),
 
   signOut: () => firebaseSignOut(auth),
 

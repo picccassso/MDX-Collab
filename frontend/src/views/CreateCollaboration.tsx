@@ -43,7 +43,10 @@ export default function CreateCollaboration() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user || !profile) return;
+    if (!user) {
+      setError("You must be signed in to post a collaboration.");
+      return;
+    }
 
     if (!title.trim()) {
       setError("Title is required");
@@ -58,7 +61,7 @@ export default function CreateCollaboration() {
           title: title.trim(),
           description: description.trim(),
           authorId: user.uid,
-          authorName: profile.username ?? user.email ?? "Anonymous",
+          authorName: profile?.username ?? user.displayName ?? user.email ?? "Anonymous",
           tags: tags.length > 0 ? tags : [category.toLowerCase()],
         },
         files,

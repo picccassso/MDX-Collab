@@ -27,7 +27,10 @@ export default function SuggestEvent() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user || !profile) return;
+    if (!user) {
+      setError("You must be signed in to submit an event.");
+      return;
+    }
 
     if (!name.trim()) {
       setError("Event name is required");
@@ -47,7 +50,7 @@ export default function SuggestEvent() {
           description: description.trim(),
           date: new Date(date),
           authorId: user.uid,
-          authorName: profile.username ?? user.email ?? "Anonymous",
+          authorName: profile?.username ?? user.displayName ?? user.email ?? "Anonymous",
         },
         image,
       );

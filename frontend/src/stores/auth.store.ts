@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   init: () => {
     const unsub = AuthService.onAuthStateChanged(async (user) => {
       if (user) {
-        const profile = await AuthService.getUserProfile(user.uid);
+        const profile = await AuthService.ensureUserProfile(user);
         set({ user, profile, loading: false });
       } else {
         set({ user: null, profile: null, loading: false });
