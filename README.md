@@ -19,7 +19,7 @@ MDX Collab is a student community platform built for the Middlesex University Ha
 - For AI integration, Supabased Edge Function and OpenAI API were used. 
 - For testing/linting, vitest + testing library and ES lint were used. 
 
-## How MDX Collab is buitl
+## How MDX Collab is built
 
 1. The frontend uses Firebase client SDKs directly for auth, Firestore read/writes, storage uploads and callable functions. 
 2. Cloud functions handle trusted/server-side actions: 
