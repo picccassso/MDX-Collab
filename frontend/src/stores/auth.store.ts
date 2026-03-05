@@ -14,6 +14,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   updateProfileInterests: (interests: string[]) => Promise<void>;
   updateProfileDescription: (description: string) => Promise<void>;
+  updateProfileNickname: (nickname: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -82,6 +83,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       set((current) => ({
         profile: current.profile ? { ...current.profile, description: previous } : current.profile,
+      }));
+      throw error;
+    }
+  },
+
+  updateProfileNickname: async (nickname) => {
+    const { user, profile } = get();
+    if (!user || !profile) {
+      throw new Error("You must be signed in to update your nickname.");
+    }
+
+    const previous = profile.nickname ?? "";
+    set({ profile: { ...profile, nickname } });
+
+    try {
+      await AuthService.updateNickname(user.uid, nickname);
+    } catch (error) {
+      set((current) => ({
+        profile: current.profile ? { ...current.profile, nickname: previous } : current.profile,
       }));
       throw error;
     }

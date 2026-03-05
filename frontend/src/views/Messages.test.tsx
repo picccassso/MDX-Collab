@@ -182,7 +182,7 @@ describe("Messages", () => {
 
   it("blocks opening a direct conversation with yourself from deep links", async () => {
     const { ensureDirectConversation } = renderMessages(
-      "/messages?userId=user-1&userName=Alex",
+      "/messages?userId=user-1",
       1280,
     );
 

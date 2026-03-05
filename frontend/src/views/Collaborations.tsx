@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import CollabListItem from "../components/CollabListItem";
 import { CollaborationService } from "../services/collaboration.service";
 import { useAuthStore } from "../stores/auth.store";
 import type { Collaboration } from "../types/collaboration";
@@ -12,17 +13,6 @@ function matchesFilter(collab: Collaboration, activeFilter: string): boolean {
   const text = `${collab.title} ${collab.description} ${collab.tags.join(" ")}`.toLowerCase();
   const normalized = activeFilter.toLowerCase().replace("&", "and");
   return text.includes(normalized) || collab.tags.some((tag) => tag.toLowerCase().includes(normalized));
-}
-
-function initials(name: string): string {
-  const bits = name.trim().split(/\s+/);
-  if (bits.length === 1) return bits[0].slice(0, 2).toUpperCase();
-  return `${bits[0][0]}${bits[1][0]}`.toUpperCase();
-}
-
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return !!target.closest("a, button, input, textarea, select, label");
 }
 
 export default function Collaborations() {
@@ -110,70 +100,52 @@ export default function Collaborations() {
           )}
 
           {visible.map((collab) => (
-            <article
-              className="collab-card clickable"
+            <CollabListItem
               key={collab.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Open collaboration ${collab.title}`}
-              onClick={(event) => {
-                if (isInteractiveTarget(event.target)) return;
-                navigate(`/collaborations/${collab.id}`);
-              }}
-              onKeyDown={(event) => {
-                if (isInteractiveTarget(event.target)) return;
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  navigate(`/collaborations/${collab.id}`);
-                }
-              }}
-            >
-              <div className="collab-header">
-                <div className="avatar av-red">{initials(collab.authorName)}</div>
-                <div className="collab-author">
-                  <div className="collab-author-name">{collab.authorName}</div>
-                  <div className="collab-meta">{formatRelativeDate(collab.createdAt)}</div>
-                </div>
+              collab={collab}
+              clickable
+              ariaLabel={`Open collaboration ${collab.title}`}
+              onOpen={() => navigate(`/collaborations/${collab.id}`)}
+              meta={formatRelativeDate(collab.createdAt)}
+              topRight={
                 <div className="tags">
                   <span className="tag green">Open</span>
                 </div>
-              </div>
-
-              <div className="collab-title">{collab.title}</div>
-              {collab.description && <div className="collab-desc">{collab.description}</div>}
-
-              {collab.tags.length > 0 && (
-                <div className="roles">
-                  {collab.tags.slice(0, 3).map((tag) => (
-                    <div className="role-chip" key={`${collab.id}-${tag}`}>
-                      <span className="dot-o" />
-                      {tag}
-                    </div>
-                  ))}
-                  {collab.files.length > 0 && (
-                    <div className="role-chip">
-                      <span className="dot-f" />
-                      {collab.files.length} assets
-                    </div>
+              }
+              roles={
+                collab.tags.length > 0 ? (
+                  <div className="roles">
+                    {collab.tags.slice(0, 3).map((tag) => (
+                      <div className="role-chip" key={`${collab.id}-${tag}`}>
+                        <span className="dot-o" />
+                        {tag}
+                      </div>
+                    ))}
+                    {collab.files.length > 0 && (
+                      <div className="role-chip">
+                        <span className="dot-f" />
+                        {collab.files.length} assets
+                      </div>
+                    )}
+                  </div>
+                ) : undefined
+              }
+              actions={
+                <div className="collab-actions">
+                  <Link className="btn-sm accent" to={`/collaborations/${collab.id}`}>
+                    Open
+                  </Link>
+                  {user?.uid !== collab.authorId && (
+                    <Link
+                      className="btn-sm outline"
+                      to={`/messages?userId=${encodeURIComponent(collab.authorId)}`}
+                    >
+                      Message Host
+                    </Link>
                   )}
                 </div>
-              )}
-
-              <div className="collab-actions">
-                <Link className="btn-sm accent" to={`/collaborations/${collab.id}`}>Open</Link>
-                {user?.uid !== collab.authorId && (
-                  <Link
-                    className="btn-sm outline"
-                    to={
-                      `/messages?userId=${encodeURIComponent(collab.authorId)}` +
-                      `&userName=${encodeURIComponent(collab.authorName)}`
-                    }
-                  >
-                    💬 Message {collab.authorName.split(/\s+/)[0]}
-                  </Link>
-                )}
-              </div>
-            </article>
+              }
+            />
           ))}
         </section>
 
@@ -202,7 +174,7 @@ export default function Collaborations() {
               {collabs.slice(0, 2).map((collab) => (
                 <div key={`match-${collab.id}`} className="collabs-match-item">
                   <div className="collabs-match-title">{collab.title}</div>
-                  <div className="collabs-match-author">{collab.authorName}</div>
+                  <div className="collab-meta">{formatRelativeDate(collab.createdAt)}</div>
                 </div>
               ))}
             </div>

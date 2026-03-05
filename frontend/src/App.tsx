@@ -8,6 +8,7 @@ import Collaborations from "./views/Collaborations";
 import CollaborationDetail from "./views/CollaborationDetail";
 import Events from "./views/Events";
 import EventDetail from "./views/EventDetail";
+import EditEvent from "./views/EditEvent";
 import Schedule from "./views/Schedule";
 import Messages from "./views/Messages";
 import CreateCollaboration from "./views/CreateCollaboration";
@@ -40,6 +41,11 @@ const router = createBrowserRouter([
         handle: { title: "New Collaboration", breadcrumb: "New Collaboration" } satisfies RouteHandle,
       },
       {
+        path: "collaborations/:collaborationId/edit",
+        element: <CreateCollaboration />,
+        handle: { title: "Edit Collaboration", breadcrumb: "Edit Collaboration" } satisfies RouteHandle,
+      },
+      {
         path: "collaborations/:collaborationId",
         element: <CollaborationDetail />,
         handle: { title: "Collab Detail", breadcrumb: "Collab Detail" } satisfies RouteHandle,
@@ -63,6 +69,11 @@ const router = createBrowserRouter([
         path: "events/:eventId",
         element: <EventDetail />,
         handle: { title: "Event Detail", breadcrumb: "Event Detail" } satisfies RouteHandle,
+      },
+      {
+        path: "events/:eventId/edit",
+        element: <EditEvent />,
+        handle: { title: "Edit Event", breadcrumb: "Edit Event" } satisfies RouteHandle,
       },
       {
         path: "messages",

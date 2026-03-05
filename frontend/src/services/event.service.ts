@@ -14,7 +14,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { deleteObject, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, functions, storage } from "./firebase";
 import type { EventItem, EventProposal, EventSignup } from "../types/event";
 
@@ -30,6 +30,13 @@ const deleteEventCallable = httpsCallable<
   functions,
   "deleteEvent",
 );
+
+async function uploadEventImage(image: File): Promise<string> {
+  const path = `events/${Date.now()}_${image.name}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, image);
+  return getDownloadURL(storageRef);
+}
 
 export const EventService = {
   async getApproved(): Promise<EventItem[]> {
@@ -63,10 +70,7 @@ export const EventService = {
     let imageUrl = "";
 
     if (image) {
-      const path = `events/${Date.now()}_${image.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, image);
-      imageUrl = await getDownloadURL(storageRef);
+      imageUrl = await uploadEventImage(image);
     }
 
     const docRef = await addDoc(collection(db, PROPOSALS), {
@@ -152,5 +156,39 @@ export const EventService = {
 
     const result = await deleteEventCallable({ eventId: normalizedEventId });
     return result.data.deletedSignupCount ?? 0;
+  },
+
+  async updateEventAsAdmin(
+    eventId: string,
+    data: {
+      name: string;
+      description: string;
+      date: Date;
+      existingImageUrl: string;
+    },
+    nextImage: File | null,
+  ): Promise<void> {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      throw new Error("Event id is required.");
+    }
+
+    let imageUrl = data.existingImageUrl ?? "";
+
+    if (nextImage) {
+      imageUrl = await uploadEventImage(nextImage);
+    }
+
+    await updateDoc(doc(db, EVENTS, normalizedEventId), {
+      name: data.name,
+      description: data.description,
+      date: Timestamp.fromDate(data.date),
+      imageUrl,
+      updatedAt: serverTimestamp(),
+    });
+
+    if (nextImage && data.existingImageUrl && data.existingImageUrl !== imageUrl) {
+      await deleteObject(ref(storage, data.existingImageUrl)).catch(() => undefined);
+    }
   },
 };

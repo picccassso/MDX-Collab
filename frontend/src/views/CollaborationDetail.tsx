@@ -12,10 +12,10 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function initials(name: string): string {
-  const bits = name.trim().split(/\s+/);
-  if (bits.length === 1) return bits[0].slice(0, 2).toUpperCase();
-  return `${bits[0][0]}${bits[1][0]}`.toUpperCase();
+function idInitials(value: string): string {
+  const cleaned = value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!cleaned) return "ID";
+  return cleaned.slice(0, 2);
 }
 
 export default function CollaborationDetail() {
@@ -73,13 +73,9 @@ export default function CollaborationDetail() {
         <div className="detail-shell">
           <section className="detail-hero detail-hero-collab">
             <div className="collab-header">
-              <div className="avatar av-red">{initials(collaboration.authorName)}</div>
+              <div className="avatar av-red">{idInitials(collaboration.authorId)}</div>
               <div className="collab-author">
-                <div className="collab-author-row">
-                  <div className="collab-author-name">{collaboration.authorName}</div>
-                  <span className="collab-author-badge">Author</span>
-                </div>
-                <div className="collab-meta">{formatRelativeDate(collaboration.createdAt)}</div>
+                <div className="collab-meta">Posted {formatRelativeDate(collaboration.createdAt)}</div>
               </div>
               <div className="tags">
                 <span className="tag green">Open</span>
@@ -132,10 +128,7 @@ export default function CollaborationDetail() {
                 <div className="detail-actions">
                   <Link
                     className="btn-sm accent collab-message-author-cta"
-                    to={
-                      `/messages?userId=${encodeURIComponent(collaboration.authorId)}` +
-                      `&userName=${encodeURIComponent(collaboration.authorName)}`
-                    }
+                    to={`/messages?userId=${encodeURIComponent(collaboration.authorId)}`}
                   >
                     Message Project Author
                   </Link>

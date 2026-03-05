@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { EventService } from "../services/event.service";
 import { PollService } from "../services/poll.service";
 import { useAuthStore } from "../stores/auth.store";
@@ -227,6 +227,9 @@ export default function Moderation() {
                   {event.description && <p className="collab-desc">{event.description}</p>}
                 </div>
                 <div className="mod-card__actions">
+                  <Link className="btn-secondary" to={`/events/${encodeURIComponent(event.id)}/edit`}>
+                    Edit Event
+                  </Link>
                   <button
                     className="btn-reject"
                     type="button"

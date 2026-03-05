@@ -102,6 +102,7 @@ type ConversationDoc = {
 };
 
 type UserDoc = {
+  nickname?: unknown;
   username?: unknown;
   email?: unknown;
 };
@@ -296,6 +297,9 @@ const pickUsername = (
   fallbackName: string,
   fallbackEmail: string,
 ): string => {
+  const docNickname = asOptionalString(userDoc?.nickname, 80);
+  if (docNickname) return docNickname;
+
   const docName = asOptionalString(userDoc?.username, 80);
   if (docName) return docName;
 
@@ -910,19 +914,6 @@ export const getOrCreateDirectConversation = onCall({
 
   await db.runTransaction(async (tx) => {
     const existing = await tx.get(conversationRef);
-    if (existing.exists) {
-      const participants = getParticipantIds(
-        existing.data() as ConversationDoc,
-      );
-      if (!participants.includes(uid)) {
-        throw new HttpsError(
-          "permission-denied",
-          "You are not a participant in this conversation.",
-        );
-      }
-      return;
-    }
-
     const [callerSnap, otherUserSnap] = await Promise.all([
       tx.get(callerRef),
       tx.get(otherUserRef),
@@ -934,6 +925,39 @@ export const getOrCreateDirectConversation = onCall({
     const otherUserData = otherUserSnap.exists ?
       (otherUserSnap.data() as UserDoc) :
       undefined;
+
+    if (existing.exists) {
+      const participants = getParticipantIds(
+        existing.data() as ConversationDoc,
+      );
+      if (!participants.includes(uid)) {
+        throw new HttpsError(
+          "permission-denied",
+          "You are not a participant in this conversation.",
+        );
+      }
+
+      tx.update(conversationRef, {
+        [`participantSnapshot.${uid}.username`]: pickUsername(
+          callerData,
+          "",
+          callerEmailHint,
+        ),
+        [`participantSnapshot.${uid}.email`]: normalizeEmail(
+          asOptionalString(callerData?.email, 160) || callerEmailHint,
+        ),
+        [`participantSnapshot.${otherUserId}.username`]: pickUsername(
+          otherUserData,
+          otherUserNameHint,
+          otherUserEmailHint,
+        ),
+        [`participantSnapshot.${otherUserId}.email`]: normalizeEmail(
+          asOptionalString(otherUserData?.email, 160) || otherUserEmailHint,
+        ),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return;
+    }
 
     const participantIds = [uid, otherUserId].sort();
 

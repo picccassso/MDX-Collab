@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import CollabListItem from "../components/CollabListItem";
 import TagInput from "../components/TagInput";
 import { CollaborationService } from "../services/collaboration.service";
 import { EventService } from "../services/event.service";
@@ -10,6 +11,7 @@ import { formatDateShort, toDate } from "../utils/date";
 
 type AccountTab = "profile" | "activity";
 const MAX_PROFILE_DESCRIPTION = 220;
+const MAX_NICKNAME_LENGTH = 40;
 
 function maskEmail(email: string): string {
   const at = email.indexOf("@");
@@ -19,7 +21,8 @@ function maskEmail(email: string): string {
 
 export default function MyAccount() {
   const navigate = useNavigate();
-  const { user, profile, updateProfileInterests, updateProfileDescription } = useAuthStore();
+  const { user, profile, updateProfileInterests, updateProfileDescription, updateProfileNickname } =
+    useAuthStore();
   const [activeTab, setActiveTab] = useState<AccountTab>("profile");
   const [showFullEmail, setShowFullEmail] = useState(false);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
@@ -28,17 +31,26 @@ export default function MyAccount() {
   const [error, setError] = useState<string | null>(null);
   const [interestSaving, setInterestSaving] = useState(false);
   const [interestError, setInterestError] = useState<string | null>(null);
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [descriptionSaving, setDescriptionSaving] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
-  const displayName = profile?.username ?? user?.email?.split("@")[0] ?? "Guest";
+  const profileNickname = (profile?.nickname ?? "").trim();
+  const displayName = profileNickname || profile?.username || user?.email?.split("@")[0] || "Guest";
   const avatarLetter = displayName.trim().slice(0, 2).toUpperCase() || "G";
   const memberSince = formatDateShort(profile?.createdAt);
   const emailLabel = user?.email ? (showFullEmail ? user.email : maskEmail(user.email)) : "Not signed in";
   const interests = profile?.interests ?? [];
   const profileDescription = (profile?.description ?? "").trim();
+  const isNicknameDirty = nicknameDraft.trim() !== profileNickname;
   const isDescriptionDirty = descriptionDraft.trim() !== profileDescription;
+
+  useEffect(() => {
+    setNicknameDraft(profile?.nickname ?? "");
+  }, [profile?.nickname]);
 
   useEffect(() => {
     setDescriptionDraft(profile?.description ?? "");
@@ -53,6 +65,17 @@ export default function MyAccount() {
         setInterestError(err instanceof Error ? err.message : "Failed to save interests.");
       })
       .finally(() => setInterestSaving(false));
+  };
+
+  const handleNicknameSave = () => {
+    if (!user || !isNicknameDirty) return;
+    setNicknameError(null);
+    setNicknameSaving(true);
+    void updateProfileNickname(nicknameDraft.trim())
+      .catch((err: unknown) => {
+        setNicknameError(err instanceof Error ? err.message : "Failed to save nickname.");
+      })
+      .finally(() => setNicknameSaving(false));
   };
 
   const handleDescriptionSave = () => {
@@ -176,6 +199,33 @@ export default function MyAccount() {
             />
           </div>
           {interestError && <div className="tag-input__error">{interestError}</div>}
+          <div className="profile-nickname-editor form-group">
+            <label htmlFor="profile-nickname-input">Nickname</label>
+            <input
+              id="profile-nickname-input"
+              className="input"
+              type="text"
+              value={nicknameDraft}
+              onChange={(e) => setNicknameDraft(e.target.value)}
+              maxLength={MAX_NICKNAME_LENGTH}
+              placeholder="Set a nickname shown instead of your name."
+              disabled={!user || nicknameSaving}
+            />
+            <div className="profile-description-actions">
+              <span className="profile-description-count">
+                {nicknameDraft.length}/{MAX_NICKNAME_LENGTH}
+              </span>
+              <button
+                className="btn-sm outline"
+                type="button"
+                onClick={handleNicknameSave}
+                disabled={!user || nicknameSaving || !isNicknameDirty}
+              >
+                {nicknameSaving ? "Saving..." : "Save Nickname"}
+              </button>
+            </div>
+          </div>
+          {nicknameError && <div className="tag-input__error">{nicknameError}</div>}
           <div className="profile-description-editor form-group">
             <label htmlFor="profile-description-input">Profile Description</label>
             <textarea
@@ -252,34 +302,24 @@ export default function MyAccount() {
                   <div className="empty-state">No collaborations yet. Create one from the collabs page.</div>
                 )}
                 {collabs.slice(0, 3).map((collab) => (
-                  <article className="collab-card" key={collab.id}>
-                    <div className="collab-header">
-                      <div className="avatar av-red">{avatarLetter}</div>
-                      <div className="collab-author">
-                        <div className="collab-author-name">{displayName} (You)</div>
-                        <div className="collab-meta">{formatDateShort(collab.createdAt)}</div>
-                      </div>
+                  <CollabListItem
+                    key={collab.id}
+                    collab={collab}
+                    meta={formatDateShort(collab.createdAt)}
+                    topRight={
                       <div className="tags">
                         <span className="tag green">Active</span>
                       </div>
-                    </div>
-                    <div className="collab-title">{collab.title}</div>
-                    {collab.description && <div className="collab-desc">{collab.description}</div>}
-                    {collab.tags.length > 0 && (
-                      <div className="tags">
-                        {collab.tags.map((tag) => (
-                          <span className="tag neutral" key={`${collab.id}-${tag}`}>
-                            {tag}
-                          </span>
-                        ))}
+                    }
+                    footerTags={collab.tags}
+                    actions={
+                      <div className="collab-actions">
+                        <Link className="btn-sm outline" to={`/collaborations/${collab.id}/edit`}>
+                          Edit
+                        </Link>
                       </div>
-                    )}
-                    <div className="collab-actions">
-                      <Link className="btn-sm outline" to="/collaborations/new">
-                        Edit Copy
-                      </Link>
-                    </div>
-                  </article>
+                    }
+                  />
                 ))}
               </div>
             </>

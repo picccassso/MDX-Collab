@@ -2,14 +2,17 @@ import {
   doc,
   collection,
   addDoc,
+  deleteDoc,
   getDoc,
   getDocs,
   serverTimestamp,
   orderBy,
   query,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import {
+  deleteObject,
   ref,
   uploadBytes,
   getDownloadURL,
@@ -18,6 +21,60 @@ import { db, storage } from "./firebase";
 import type { Collaboration, CollaborationFile } from "../types/collaboration";
 
 const COLLECTION = "collaborations";
+
+type ThumbnailSelection =
+  | { source: "existing"; url: string }
+  | { source: "new"; index: number }
+  | null;
+
+function isImageFile(file: CollaborationFile): boolean {
+  return typeof file.type === "string" && file.type.startsWith("image/");
+}
+
+function pickThumbnailUrl(
+  retainedFiles: CollaborationFile[],
+  uploadedFiles: CollaborationFile[],
+  selection: ThumbnailSelection,
+): string | null {
+  if (selection?.source === "existing") {
+    const selected = retainedFiles.find((file) => file.url === selection.url);
+    if (selected && isImageFile(selected)) return selected.url;
+  }
+
+  if (selection?.source === "new") {
+    const selected = uploadedFiles[selection.index];
+    if (selected && isImageFile(selected)) return selected.url;
+  }
+
+  const fallback = [...retainedFiles, ...uploadedFiles].find(isImageFile);
+  return fallback?.url ?? null;
+}
+
+async function uploadFiles(files: File[]): Promise<CollaborationFile[]> {
+  const uploadedFiles: CollaborationFile[] = [];
+
+  for (const file of files) {
+    const path = `collaborations/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    uploadedFiles.push({
+      name: file.name,
+      url,
+      type: file.type,
+      size: file.size,
+    });
+  }
+
+  return uploadedFiles;
+}
+
+async function deleteFilesByUrl(urls: string[]): Promise<void> {
+  if (urls.length === 0) return;
+  await Promise.allSettled(
+    urls.map((url) => deleteObject(ref(storage, url))),
+  );
+}
 
 export const CollaborationService = {
   async getAll(): Promise<Collaboration[]> {
@@ -49,23 +106,15 @@ export const CollaborationService = {
       authorId: string;
       authorName: string;
       tags: string[];
+      mediaDefaultY: number;
+      mediaMinY: number;
+      mediaMaxY: number;
     },
     files: File[],
+    thumbnailSelection: ThumbnailSelection = null,
   ): Promise<string> {
-    const uploadedFiles: CollaborationFile[] = [];
-
-    for (const file of files) {
-      const path = `collaborations/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      uploadedFiles.push({
-        name: file.name,
-        url,
-        type: file.type,
-        size: file.size,
-      });
-    }
+    const uploadedFiles = await uploadFiles(files);
+    const thumbnailUrl = pickThumbnailUrl([], uploadedFiles, thumbnailSelection);
 
     const docRef = await addDoc(collection(db, COLLECTION), {
       title: data.title,
@@ -75,10 +124,63 @@ export const CollaborationService = {
       collaborators: [],
       tags: data.tags,
       files: uploadedFiles,
+      thumbnailUrl,
+      mediaDefaultY: data.mediaDefaultY,
+      mediaMinY: data.mediaMinY,
+      mediaMaxY: data.mediaMaxY,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
 
     return docRef.id;
+  },
+
+  async update(
+    id: string,
+    data: {
+      title: string;
+      description: string;
+      tags: string[];
+      authorName: string;
+      mediaDefaultY: number;
+      mediaMinY: number;
+      mediaMaxY: number;
+    },
+    newFiles: File[],
+    retainedFiles: CollaborationFile[],
+    removedFileUrls: string[] = [],
+    thumbnailSelection: ThumbnailSelection = null,
+  ): Promise<void> {
+    const uploadedFiles = await uploadFiles(newFiles);
+    const nextFiles = [...retainedFiles, ...uploadedFiles];
+    const thumbnailUrl = pickThumbnailUrl(retainedFiles, uploadedFiles, thumbnailSelection);
+
+    await updateDoc(doc(db, COLLECTION, id), {
+      title: data.title,
+      description: data.description,
+      tags: data.tags,
+      authorName: data.authorName,
+      files: nextFiles,
+      thumbnailUrl,
+      mediaDefaultY: data.mediaDefaultY,
+      mediaMinY: data.mediaMinY,
+      mediaMaxY: data.mediaMaxY,
+      updatedAt: serverTimestamp(),
+    });
+
+    await deleteFilesByUrl(removedFileUrls);
+  },
+
+  async delete(id: string): Promise<void> {
+    const refDoc = doc(db, COLLECTION, id);
+    const snap = await getDoc(refDoc);
+    const filesToDelete = snap.exists() ?
+      ((snap.data() as Collaboration).files ?? [])
+        .map((file) => file?.url)
+        .filter((url): url is string => typeof url === "string" && url.length > 0) :
+      [];
+
+    await deleteDoc(refDoc);
+    await deleteFilesByUrl(filesToDelete);
   },
 };

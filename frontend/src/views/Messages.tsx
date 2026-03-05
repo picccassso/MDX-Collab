@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { sendAiMessage, type AiChatHistory } from "../services/ai-chat.service";
+import { AuthService } from "../services/auth.service";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useAuthStore } from "../stores/auth.store";
 import { useMessagingStore } from "../stores/messaging.store";
@@ -281,7 +282,6 @@ export default function Messages() {
   const markConversationRead = useMessagingStore((state) => state.markConversationRead);
 
   const targetUserId = searchParams.get("userId")?.trim() ?? "";
-  const targetUserName = searchParams.get("userName")?.trim() ?? "";
 
   useEffect(() => {
     if (!user || !targetUserId) return;
@@ -291,18 +291,29 @@ export default function Messages() {
       return;
     }
 
-    const identity = {
-      uid: user.uid,
-      username: profile?.username ?? user.displayName ?? user.email ?? "Unknown user",
-      email: user.email ?? "",
+    let cancelled = false;
+    const openDirectConversation = async () => {
+      const targetProfile = await AuthService.getUserProfile(targetUserId).catch(() => null);
+      const targetDisplayName =
+        targetProfile?.nickname?.trim() || targetProfile?.username?.trim() || targetProfile?.email?.trim() || undefined;
+
+      const identity = {
+        uid: user.uid,
+        username: profile?.nickname?.trim() || profile?.username || user.displayName || user.email || "Unknown user",
+        email: user.email ?? "",
+      };
+
+      return ensureDirectConversation(identity, targetUserId, {
+        username: targetDisplayName,
+        email: targetProfile?.email?.trim() || undefined,
+      });
     };
 
-    let cancelled = false;
-    ensureDirectConversation(identity, targetUserId, { username: targetUserName })
-      .then((conversationId) => {
+    openDirectConversation()
+      .then((resolvedConversationId) => {
         if (cancelled) return;
         setDeepLinkError(null);
-        navigate(`/messages/${conversationId}`, { replace: true });
+        navigate(`/messages/${resolvedConversationId}`, { replace: true });
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -313,7 +324,7 @@ export default function Messages() {
     return () => {
       cancelled = true;
     };
-  }, [ensureDirectConversation, navigate, profile?.username, targetUserId, targetUserName, user]);
+  }, [ensureDirectConversation, navigate, profile?.nickname, profile?.username, targetUserId, user]);
 
   const directConversations = useMemo(
     () => (user ? conversations.map((conversation) => mapConversation(conversation, user.uid)) : []),

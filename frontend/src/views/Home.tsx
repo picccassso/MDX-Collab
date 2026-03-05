@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import CollabListItem from "../components/CollabListItem";
 import PollPlaceholder from "../components/PollPlaceholder";
 import { CollaborationService } from "../services/collaboration.service";
 import { EventService } from "../services/event.service";
@@ -7,19 +8,6 @@ import { useAuthStore } from "../stores/auth.store";
 import type { Collaboration } from "../types/collaboration";
 import type { EventItem } from "../types/event";
 import { formatDateShort, toDate } from "../utils/date";
-
-function nameInitials(name: string): string {
-  const cleaned = name.trim();
-  if (!cleaned) return "??";
-  const parts = cleaned.split(/\s+/).slice(0, 2);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return !!target.closest("a, button, input, textarea, select, label");
-}
 
 export default function Home() {
   const navigate = useNavigate();
@@ -43,7 +31,8 @@ export default function Home() {
       .finally(() => setEventLoading(false));
   }, []);
 
-  const displayName = profile?.username ?? user?.email?.split("@")[0] ?? "Student";
+  const displayName =
+    profile?.nickname?.trim() || profile?.username || user?.email?.split("@")[0] || "Student";
   const firstName = displayName.split(/[.\s_-]+/)[0] || "Student";
   const normalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
   const todayLabel = useMemo(
@@ -80,7 +69,7 @@ export default function Home() {
   const streakRemaining = Math.max(streakGoal - streakDays, 0);
 
   return (
-    <div className="page-view">
+    <div className="page-view home-page-view">
       <div className="home-hero">
         <div className="home-hero-content">
           <div className="home-hero-copy">
@@ -157,83 +146,61 @@ export default function Home() {
             <div className="empty-state">No collaborations yet. Post the first one.</div>
           )}
 
-          {collabs.map((c) => (
-            <article
-              className="collab-card clickable"
-              key={c.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Open collaboration ${c.title}`}
-              onClick={(event) => {
-                if (isInteractiveTarget(event.target)) return;
-                navigate(`/collaborations/${c.id}`);
-              }}
-              onKeyDown={(event) => {
-                if (isInteractiveTarget(event.target)) return;
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  navigate(`/collaborations/${c.id}`);
-                }
-              }}
-            >
-              <div className="collab-header">
-                <div className="avatar av-red">{nameInitials(c.authorName)}</div>
-                <div className="collab-author">
-                  <div className="collab-author-name">{c.authorName}</div>
-                  <div className="collab-meta">Created {formatDateShort(c.createdAt)}</div>
-                </div>
-                {c.tags.length > 0 && (
-                  <div className="tags">
-                    <span className="tag">{c.tags[0]}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="collab-title">{c.title}</div>
-              {c.description && <div className="collab-desc">{c.description}</div>}
-
-              <div className="roles">
-                <div className="role-chip">
-                  <span className="dot-o" />
-                  Open to collaborators
-                </div>
-                {c.files.length > 0 && (
+          {collabs.map((collab) => (
+            <CollabListItem
+              key={collab.id}
+              collab={collab}
+              clickable
+              ariaLabel={`Open collaboration ${collab.title}`}
+              onOpen={() => navigate(`/collaborations/${collab.id}`)}
+              meta={`Created ${formatDateShort(collab.createdAt)}`}
+              topRight={collab.tags.length > 0 ? <div className="tags"><span className="tag">{collab.tags[0]}</span></div> : undefined}
+              roles={
+                <div className="roles">
                   <div className="role-chip">
-                    <span className="dot-f" />
-                    {c.files.length} file{c.files.length === 1 ? "" : "s"} attached
+                    <span className="dot-o" />
+                    Open to collaborators
                   </div>
-                )}
-              </div>
-
-              <div className="tags">
-                {c.tags.slice(0, 4).map((tag) => (
-                  <span className="tag neutral" key={`${c.id}-${tag}`}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              <div className="collab-actions">
-                <Link className="btn-sm accent" to={`/collaborations/${c.id}`}>Open</Link>
-                {user?.uid !== c.authorId && (
-                  <Link
-                    className="btn-sm outline"
-                    to={`/messages?userId=${encodeURIComponent(c.authorId)}&userName=${encodeURIComponent(c.authorName)}`}
-                  >
-                    Message Host
+                  {collab.files.length > 0 && (
+                    <div className="role-chip">
+                      <span className="dot-f" />
+                      {collab.files.length} file{collab.files.length === 1 ? "" : "s"} attached
+                    </div>
+                  )}
+                </div>
+              }
+              footerTags={collab.tags.slice(0, 4)}
+              actions={
+                <div className="collab-actions">
+                  <Link className="btn-sm accent" to={`/collaborations/${collab.id}`}>
+                    Open
                   </Link>
-                )}
-              </div>
-            </article>
+                  {user?.uid !== collab.authorId && (
+                    <Link
+                      className="btn-sm outline"
+                      to={`/messages?userId=${encodeURIComponent(collab.authorId)}`}
+                    >
+                      Message Host
+                    </Link>
+                  )}
+                </div>
+              }
+            />
           ))}
         </section>
 
         <aside className="home-aside">
           <div className="sec-head">
             <span className="bar" />
+            Campus Poll
+          </div>
+          <PollPlaceholder />
+
+          <div className="sec-head home-suggest-head">
+            <span className="bar" />
             Upcoming Events
           </div>
-          <div className="aside-card">
+          <div className="aside-card home-events-card">
             {eventLoading && <p className="collab-meta">Loading upcoming events...</p>}
             {eventError && <p className="collab-meta">{eventError}</p>}
 
@@ -242,10 +209,14 @@ export default function Home() {
             )}
 
             {upcoming.map((ev, index) => (
-              <div
+              <Link
+                to={`/events/${ev.id}`}
                 className="home-upcoming-event"
                 key={ev.id}
                 style={{
+                  display: "block",
+                  textDecoration: "none",
+                  color: "inherit",
                   marginBottom: index === upcoming.length - 1 ? 0 : 12,
                   paddingBottom: index === upcoming.length - 1 ? 0 : 12,
                   borderBottom: index === upcoming.length - 1 ? "none" : "1px solid var(--border)",
@@ -258,12 +229,7 @@ export default function Home() {
                     {ev.description}
                   </div>
                 )}
-                <div style={{ marginTop: 6 }}>
-                  <Link className="btn-sm outline" to={`/events/${ev.id}`}>
-                    Open
-                  </Link>
-                </div>
-              </div>
+              </Link>
             ))}
             <div className="home-upcoming-footer">
               <Link className="btn-sm outline" to="/events">
@@ -271,12 +237,6 @@ export default function Home() {
               </Link>
             </div>
           </div>
-
-          <div className="sec-head home-suggest-head">
-            <span className="bar" />
-            Campus Poll
-          </div>
-          <PollPlaceholder />
         </aside>
       </div>
     </div>
