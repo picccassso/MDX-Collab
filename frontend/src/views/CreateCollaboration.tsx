@@ -88,7 +88,9 @@ export default function CreateCollaboration() {
   const formId = isEditMode ? "edit-collab-form" : "create-collab-form";
 
   const isLoggedIn = !!user;
-  const isUnauthorizedEdit = isEditMode && !!user && !!collabAuthorId && collabAuthorId !== user.uid;
+  const isAdmin = profile?.admin === true;
+  const isUnauthorizedEdit =
+    isEditMode && !!user && !!collabAuthorId && collabAuthorId !== user.uid && !isAdmin;
   const existingImageFiles = useMemo(
     () => existingFiles.filter((file) => isImageType(file.type)),
     [existingFiles],

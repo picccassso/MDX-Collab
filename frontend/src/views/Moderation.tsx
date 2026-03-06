@@ -1,14 +1,30 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import {
+  CollaborationService,
+  type CollaborationCursor,
+} from "../services/collaboration.service";
 import { EventService } from "../services/event.service";
 import { PollService } from "../services/poll.service";
 import { useAuthStore } from "../stores/auth.store";
+import type { Collaboration } from "../types/collaboration";
 import type { EventItem, EventProposal } from "../types/event";
 import type { PollSummary } from "../types/poll";
-import { formatDateTime } from "../utils/date";
+import { formatDateShort, formatDateTime } from "../utils/date";
+
+type ModerationTab = "events" | "polls" | "collabs";
+
+const COLLABS_PAGE_SIZE = 20;
+
+function getCollabCoverImage(collab: Collaboration): string | null {
+  if (collab.thumbnailUrl) return collab.thumbnailUrl;
+  const imageFile = collab.files.find((file) => file.type.startsWith("image/"));
+  return imageFile?.url ?? null;
+}
 
 export default function Moderation() {
   const { profile, loading: authLoading } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<ModerationTab>("events");
   const [proposals, setProposals] = useState<EventProposal[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [polls, setPolls] = useState<PollSummary[]>([]);
@@ -18,6 +34,12 @@ export default function Moderation() {
   const [newPollTitle, setNewPollTitle] = useState("");
   const [newPollOptions, setNewPollOptions] = useState("");
   const [allowVoteChange, setAllowVoteChange] = useState(false);
+  const [collabs, setCollabs] = useState<Collaboration[]>([]);
+  const [collabsCursor, setCollabsCursor] = useState<CollaborationCursor>(null);
+  const [collabsHasMore, setCollabsHasMore] = useState(false);
+  const [collabsLoaded, setCollabsLoaded] = useState(false);
+  const [collabsLoading, setCollabsLoading] = useState(false);
+  const [collabsLoadingMore, setCollabsLoadingMore] = useState(false);
 
   const isAdmin = profile?.admin === true;
 
@@ -27,11 +49,7 @@ export default function Moderation() {
     setError(null);
     setLoading(true);
 
-    Promise.all([
-      EventService.getPendingProposals(),
-      EventService.getAllEvents(),
-      PollService.listPolls(),
-    ])
+    Promise.all([EventService.getPendingProposals(), EventService.getAllEvents(), PollService.listPolls()])
       .then(([pendingProposals, allEvents, pollList]) => {
         if (cancelled) return;
         setProposals(pendingProposals);
@@ -51,6 +69,35 @@ export default function Moderation() {
       cancelled = true;
     };
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin || activeTab !== "collabs" || collabsLoaded) return;
+
+    let cancelled = false;
+    setError(null);
+    setCollabsLoading(true);
+
+    CollaborationService.listPage(COLLABS_PAGE_SIZE)
+      .then((page) => {
+        if (cancelled) return;
+        setCollabs(page.items);
+        setCollabsCursor(page.cursor);
+        setCollabsHasMore(page.hasMore);
+        setCollabsLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to load collaborations.");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setCollabsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, collabsLoaded, isAdmin]);
 
   if (authLoading) return null;
   if (!isAdmin) return <Navigate to="/" replace />;
@@ -160,6 +207,25 @@ export default function Moderation() {
     }
   };
 
+  const handleLoadMoreCollabs = async () => {
+    if (!collabsHasMore || collabsLoadingMore) return;
+
+    setCollabsLoadingMore(true);
+    setError(null);
+    try {
+      const page = await CollaborationService.listPage(COLLABS_PAGE_SIZE, collabsCursor);
+      setCollabs((prev) => [...prev, ...page.items]);
+      setCollabsCursor(page.cursor);
+      setCollabsHasMore(page.hasMore);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load more collaborations.");
+    } finally {
+      setCollabsLoadingMore(false);
+    }
+  };
+
+  const showCoreLoading = loading && activeTab !== "collabs";
+
   return (
     <div className="page-view">
       <div className="topbar">
@@ -168,10 +234,34 @@ export default function Moderation() {
         </div>
       </div>
 
-      {error && <div className="form-shell"><div className="auth-error">{error}</div></div>}
-      {loading && <div className="form-shell"><div className="empty-state">Loading moderation data...</div></div>}
+      <div className="filters">
+        <button
+          className={`filter-pill ${activeTab === "events" ? "active" : ""}`}
+          type="button"
+          onClick={() => setActiveTab("events")}
+        >
+          Events
+        </button>
+        <button
+          className={`filter-pill ${activeTab === "polls" ? "active" : ""}`}
+          type="button"
+          onClick={() => setActiveTab("polls")}
+        >
+          Polls
+        </button>
+        <button
+          className={`filter-pill ${activeTab === "collabs" ? "active" : ""}`}
+          type="button"
+          onClick={() => setActiveTab("collabs")}
+        >
+          Collabs
+        </button>
+      </div>
 
-      {!loading && (
+      {error && <div className="form-shell"><div className="auth-error">{error}</div></div>}
+      {showCoreLoading && <div className="form-shell"><div className="empty-state">Loading moderation data...</div></div>}
+
+      {!showCoreLoading && activeTab === "events" && (
         <>
           <div className="mod-list">
             <h2 className="event-title">Pending Proposals</h2>
@@ -242,91 +332,150 @@ export default function Moderation() {
               </article>
             ))}
           </div>
+        </>
+      )}
 
-          <div className="mod-list">
-            <h2 className="event-title">Campus Polls</h2>
-            <div className="form-card">
-              <div className="form-group">
-                <label htmlFor="poll-title">Poll title</label>
-                <input
-                  id="poll-title"
-                  value={newPollTitle}
-                  onChange={(event) => setNewPollTitle(event.target.value)}
-                  placeholder="What should we improve next month?"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="poll-options">Options (one per line)</label>
-                <textarea
-                  id="poll-options"
-                  value={newPollOptions}
-                  onChange={(event) => setNewPollOptions(event.target.value)}
-                  placeholder={"Extend library hours\nAdd more study spaces\nIncrease peer tutoring"}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={allowVoteChange}
-                    onChange={(event) => setAllowVoteChange(event.target.checked)}
-                    style={{ width: "auto", margin: 0 }}
-                  />
-                  Allow users to change vote
-                </label>
-              </div>
-              <button
-                className="btn-primary-inline"
-                type="button"
-                disabled={acting === "poll:create"}
-                onClick={handleCreatePoll}
-              >
-                {acting === "poll:create" ? "Creating..." : "Create draft poll"}
-              </button>
+      {!showCoreLoading && activeTab === "polls" && (
+        <div className="mod-list">
+          <h2 className="event-title">Campus Polls</h2>
+          <div className="form-card">
+            <div className="form-group">
+              <label htmlFor="poll-title">Poll title</label>
+              <input
+                id="poll-title"
+                value={newPollTitle}
+                onChange={(event) => setNewPollTitle(event.target.value)}
+                placeholder="What should we improve next month?"
+              />
             </div>
+            <div className="form-group">
+              <label htmlFor="poll-options">Options (one per line)</label>
+              <textarea
+                id="poll-options"
+                value={newPollOptions}
+                onChange={(event) => setNewPollOptions(event.target.value)}
+                placeholder={"Extend library hours\nAdd more study spaces\nIncrease peer tutoring"}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={allowVoteChange}
+                  onChange={(event) => setAllowVoteChange(event.target.checked)}
+                  style={{ width: "auto", margin: 0 }}
+                />
+                Allow users to change vote
+              </label>
+            </div>
+            <button
+              className="btn-primary-inline"
+              type="button"
+              disabled={acting === "poll:create"}
+              onClick={handleCreatePoll}
+            >
+              {acting === "poll:create" ? "Creating..." : "Create draft poll"}
+            </button>
+          </div>
 
-            {polls.length === 0 && <div className="empty-state">No polls created yet.</div>}
-            {polls.map((poll) => (
-              <article className="mod-card" key={poll.pollId}>
-                <div className="mod-card__img b2" />
+          {polls.length === 0 && <div className="empty-state">No polls created yet.</div>}
+          {polls.map((poll) => (
+            <article className="mod-card" key={poll.pollId}>
+              <div className="mod-card__img b2" />
+              <div className="mod-card__body">
+                <h3 className="event-title">{poll.title}</h3>
+                <span className="event-date">
+                  Status: {poll.status}{poll.active ? " (active)" : ""}
+                </span>
+                <span className="mod-card__author">
+                  {poll.totalVotes.toLocaleString()} votes • {poll.options.length} options
+                </span>
+                <div className="tags">
+                  {poll.options.map((option) => (
+                    <span className="tag neutral" key={`${poll.pollId}-${option.id}`}>
+                      {option.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="mod-card__actions">
+                <button
+                  className="btn-approve"
+                  type="button"
+                  disabled={poll.status === "live" || acting === `poll:publish:${poll.pollId}`}
+                  onClick={() => handlePublishPoll(poll.pollId)}
+                >
+                  {acting === `poll:publish:${poll.pollId}` ? "Publishing..." : "Publish"}
+                </button>
+                <button
+                  className="btn-reject"
+                  type="button"
+                  disabled={poll.status !== "live" || acting === `poll:close:${poll.pollId}`}
+                  onClick={() => handleClosePoll(poll.pollId)}
+                >
+                  {acting === `poll:close:${poll.pollId}` ? "Closing..." : "Close"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "collabs" && (
+        <div className="mod-list">
+          <h2 className="event-title">All Collabs</h2>
+          {!collabsLoaded && collabsLoading && (
+            <div className="empty-state">Loading collaborations...</div>
+          )}
+          {collabsLoaded && collabs.length === 0 && (
+            <div className="empty-state">No collaborations found.</div>
+          )}
+          {collabs.map((collab) => {
+            const coverImage = getCollabCoverImage(collab);
+            return (
+              <article className="mod-card" key={collab.id}>
+                {coverImage ? (
+                  <img className="mod-card__img" src={coverImage} alt={collab.title} />
+                ) : (
+                  <div className="mod-card__img b2" />
+                )}
                 <div className="mod-card__body">
-                  <h3 className="event-title">{poll.title}</h3>
-                  <span className="event-date">
-                    Status: {poll.status}{poll.active ? " (active)" : ""}
-                  </span>
-                  <span className="mod-card__author">
-                    {poll.totalVotes.toLocaleString()} votes • {poll.options.length} options
-                  </span>
-                  <div className="tags">
-                    {poll.options.map((option) => (
-                      <span className="tag neutral" key={`${poll.pollId}-${option.id}`}>
-                        {option.label}
-                      </span>
-                    ))}
-                  </div>
+                  <h3 className="event-title">{collab.title}</h3>
+                  <span className="event-date">Created {formatDateShort(collab.createdAt)}</span>
+                  <span className="mod-card__author">ID: {collab.id}</span>
+                  {collab.description && <p className="collab-desc">{collab.description}</p>}
+                  {collab.tags.length > 0 && (
+                    <div className="tags">
+                      {collab.tags.slice(0, 5).map((tag) => (
+                        <span className="tag neutral" key={`${collab.id}-${tag}`}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="mod-card__actions">
-                  <button
-                    className="btn-approve"
-                    type="button"
-                    disabled={poll.status === "live" || acting === `poll:publish:${poll.pollId}`}
-                    onClick={() => handlePublishPoll(poll.pollId)}
-                  >
-                    {acting === `poll:publish:${poll.pollId}` ? "Publishing..." : "Publish"}
-                  </button>
-                  <button
-                    className="btn-reject"
-                    type="button"
-                    disabled={poll.status !== "live" || acting === `poll:close:${poll.pollId}`}
-                    onClick={() => handleClosePoll(poll.pollId)}
-                  >
-                    {acting === `poll:close:${poll.pollId}` ? "Closing..." : "Close"}
-                  </button>
+                  <Link className="btn-secondary" to={`/collaborations/${encodeURIComponent(collab.id)}/edit`}>
+                    Edit Collab
+                  </Link>
+                  <Link className="btn-sm outline" to={`/collaborations/${encodeURIComponent(collab.id)}`}>
+                    Open
+                  </Link>
                 </div>
               </article>
-            ))}
-          </div>
-        </>
+            );
+          })}
+          {collabsHasMore && (
+            <button
+              className="btn-primary-inline"
+              type="button"
+              disabled={collabsLoadingMore}
+              onClick={handleLoadMoreCollabs}
+            >
+              {collabsLoadingMore ? "Loading..." : "Load More"}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

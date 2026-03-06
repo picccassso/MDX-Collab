@@ -56,7 +56,8 @@ service cloud.firestore {
         request.resource.data.title is string &&
         request.resource.data.description is string &&
         request.resource.data.tags is list;
-      allow update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
+      allow update, delete: if signedIn() &&
+        (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
     match /events/{eventId} {
