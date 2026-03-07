@@ -27,3 +27,40 @@ export function getCollaborationCoverImageUrl(
   if (thumbnailUrl) return thumbnailUrl;
   return getCollaborationImageFiles(collab?.files)[0]?.url ?? null;
 }
+
+function normalizeSearchText(value: string | null | undefined): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+export function getCollaborationSearchScore(
+  collab: Pick<Collaboration, "title" | "description" | "tags" | "authorName">,
+  query: string,
+): number {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return 0;
+
+  const title = normalizeSearchText(collab.title);
+  const description = normalizeSearchText(collab.description);
+  const authorName = normalizeSearchText(collab.authorName);
+  const tags = Array.isArray(collab.tags) ? collab.tags.map(normalizeSearchText).filter(Boolean) : [];
+  const wholeText = [title, description, authorName, ...tags].filter(Boolean).join(" ");
+  if (!wholeText.includes(normalizedQuery)) return 0;
+
+  let score = 1;
+
+  if (title === normalizedQuery) score += 120;
+  else if (title.startsWith(normalizedQuery)) score += 80;
+  else if (title.includes(normalizedQuery)) score += 50;
+
+  if (tags.some((tag) => tag === normalizedQuery)) score += 70;
+  else if (tags.some((tag) => tag.startsWith(normalizedQuery))) score += 45;
+  else if (tags.some((tag) => tag.includes(normalizedQuery))) score += 25;
+
+  if (authorName.startsWith(normalizedQuery)) score += 20;
+  else if (authorName.includes(normalizedQuery)) score += 10;
+
+  if (description.startsWith(normalizedQuery)) score += 12;
+  else if (description.includes(normalizedQuery)) score += 6;
+
+  return score;
+}
