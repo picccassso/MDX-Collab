@@ -72,3 +72,6 @@ node_modules/
 #macos stuff
 
 .DS_Store
+
+# Local theme fix notes
+docs/themes/fixes/
