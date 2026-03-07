@@ -58,9 +58,6 @@ export default function Collaborations() {
             </svg>
             <input placeholder="Search collabs, skills" readOnly />
           </div>
-          <Link className="btn-sm accent" to="/collaborations/new">
-            + New Collab
-          </Link>
         </div>
       </div>
 
@@ -80,18 +77,9 @@ export default function Collaborations() {
           </div>
 
           <div className="create-post-box">
-            <div className="create-post-row">
-              <div className="avatar av-red" style={{ width: 30, height: 30, fontSize: 10 }}>YU</div>
-              <input
-                className="create-post-input"
-                placeholder="Post a collab opportunity"
-                readOnly
-                onFocus={() => navigate("/collaborations/new")}
-              />
-              <Link className="btn-sm accent" to="/collaborations/new">
-                Post
-              </Link>
-            </div>
+            <Link className="btn-sm accent" to="/collaborations/new">
+              + New Collab
+            </Link>
           </div>
 
           {loading && <div className="empty-state">Loading collaborations...</div>}

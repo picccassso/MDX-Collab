@@ -1305,7 +1305,7 @@ select {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 16px 28px;
+  padding: 16px 26px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2228,8 +2228,22 @@ select {
 .create-post-box {
   background: var(--card);
   border: 1px solid var(--border);
-  padding: 13px;
+  padding: 0;
   margin-bottom: 14px;
+  display: flex;
+}
+
+.create-post-box .btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  font-size: 18px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-width: 0;
 }
 
 .create-post-row {
@@ -2258,6 +2272,8 @@ select {
 .collab-filters {
   border-bottom: 0;
   padding-bottom: 12px;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .collabs-match-copy {
@@ -3735,6 +3751,15 @@ select {
 
   .search-bar {
     width: 100%;
+  }
+
+  .create-post-box {
+    margin-bottom: 12px;
+  }
+
+  .create-post-box .btn-sm {
+    min-height: 44px;
+    font-size: 16px;
   }
 
   .account-tab-group {
