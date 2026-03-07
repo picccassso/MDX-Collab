@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import CollabListItem, { type CollabListItemModel } from "../components/CollabListItem";
+import ConfirmDialog from "../components/ConfirmDialog";
 import TagInput from "../components/TagInput";
 import { CollaborationService } from "../services/collaboration.service";
 import { useAuthStore } from "../stores/auth.store";
@@ -76,6 +77,7 @@ export default function CreateCollaboration() {
   const [mediaWindow, setMediaWindow] = useState<MediaWindow>(DEFAULT_MEDIA_WINDOW);
   const [error, setError] = useState("");
   const [showPhotoRequiredModal, setShowPhotoRequiredModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -428,8 +430,6 @@ export default function CreateCollaboration() {
       setError("You can only delete your own collaboration.");
       return;
     }
-    if (!window.confirm("Delete this collaboration? This cannot be undone.")) return;
-
     setError("");
     setDeleting(true);
     try {
@@ -439,11 +439,21 @@ export default function CreateCollaboration() {
       setError(err instanceof Error ? err.message : "Failed to delete collaboration.");
     } finally {
       setDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
   return (
     <div className="page-view">
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Delete this collaboration?"
+        message="This cannot be undone."
+        confirmLabel={deleting ? "Deleting..." : "Delete collaboration"}
+        busy={deleting}
+        onCancel={() => setShowDeleteDialog(false)}
+        onConfirm={() => void handleDelete()}
+      />
       {showPhotoRequiredModal && (
         <div
           className="collab-photo-modal"
@@ -492,7 +502,7 @@ export default function CreateCollaboration() {
             <button
               className="btn-sm outline collab-editor-delete"
               type="button"
-              onClick={handleDelete}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={loadingExisting || saving || deleting || !isLoggedIn || isUnauthorizedEdit}
             >
               {deleting ? "Deleting..." : "Delete Colaboration"}

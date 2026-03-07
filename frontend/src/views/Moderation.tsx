@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import ConfirmDialog from "../components/ConfirmDialog";
 import {
   CollaborationService,
   type CollaborationCursor,
@@ -44,6 +45,7 @@ export default function Moderation() {
   const [feedbackItems, setFeedbackItems] = useState<FeedbackEntry[]>([]);
   const [feedbackLoaded, setFeedbackLoaded] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [pendingEventDelete, setPendingEventDelete] = useState<EventItem | null>(null);
 
   const isAdmin = profile?.admin === true;
 
@@ -165,15 +167,18 @@ export default function Moderation() {
   };
 
   const handleDeleteEvent = async (event: EventItem) => {
-    const shouldDelete = window.confirm(
-      `Delete "${event.name}"?\n\nThis will also remove every user's signup for this event.`,
-    );
-    if (!shouldDelete) return;
+    setPendingEventDelete(event);
+  };
 
-    setActing(`event:${event.id}`);
+  const confirmDeleteEvent = async () => {
+    if (!pendingEventDelete) return;
+
+    const eventId = pendingEventDelete.id;
+    setActing(`event:${eventId}`);
     try {
-      await EventService.deleteEventAsAdmin(event.id);
-      setEvents((prev) => prev.filter((item) => item.id !== event.id));
+      await EventService.deleteEventAsAdmin(eventId);
+      setEvents((prev) => prev.filter((item) => item.id !== eventId));
+      setPendingEventDelete(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete event");
     } finally {
@@ -259,6 +264,15 @@ export default function Moderation() {
 
   return (
     <div className="page-view">
+      <ConfirmDialog
+        isOpen={pendingEventDelete !== null}
+        title={pendingEventDelete ? `Delete "${pendingEventDelete.name}"?` : "Delete event?"}
+        message="This will also remove every user's signup for this event."
+        confirmLabel={pendingEventDelete && acting === `event:${pendingEventDelete.id}` ? "Deleting..." : "Delete event"}
+        busy={pendingEventDelete ? acting === `event:${pendingEventDelete.id}` : false}
+        onCancel={() => setPendingEventDelete(null)}
+        onConfirm={() => void confirmDeleteEvent()}
+      />
       <div className="topbar">
         <div className="topbar-title">
           Admin <span>Moderation</span>
