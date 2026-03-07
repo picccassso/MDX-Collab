@@ -107,6 +107,14 @@ select {
   min-width: 0;
 }
 
+.messages-page-view {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .sidebar {
   width: var(--sidebar-width);
   height: 100dvh;
@@ -2272,7 +2280,9 @@ select {
 .chat-layout {
   display: grid;
   grid-template-columns: 242px 1fr;
-  min-height: calc(100dvh - 67px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-sidebar {
@@ -2281,6 +2291,7 @@ select {
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -2384,6 +2395,8 @@ select {
 .chat-main {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-topbar {
@@ -2543,12 +2556,14 @@ select {
 }
 
 .chat-mobile-view {
-  min-height: calc(100dvh - 67px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-mobile-list {
   border-right: 0;
-  min-height: calc(100dvh - 67px);
+  min-height: 0;
 }
 
 .profile-layout {
