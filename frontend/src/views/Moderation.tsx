@@ -304,6 +304,8 @@ export default function Moderation() {
   const visibleFeedback = feedbackItems.filter((item) =>
     feedbackFilterTab === "addressed" ? item.addressed : !item.addressed,
   );
+  const unaddressedFeedbackCount = feedbackItems.filter((item) => !item.addressed).length;
+  const addressedFeedbackCount = feedbackItems.filter((item) => item.addressed).length;
 
   const showCoreLoading = loading && activeTab !== "collabs";
 
@@ -592,14 +594,14 @@ export default function Moderation() {
               type="button"
               onClick={() => setFeedbackFilterTab("unaddressed")}
             >
-              Unaddressed
+              Unaddressed ({unaddressedFeedbackCount})
             </button>
             <button
               className={`filter-pill ${feedbackFilterTab === "addressed" ? "active" : ""}`}
               type="button"
               onClick={() => setFeedbackFilterTab("addressed")}
             >
-              Addressed
+              Addressed ({addressedFeedbackCount})
             </button>
           </div>
           <h2 className="event-title">Student Feedback</h2>

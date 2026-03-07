@@ -149,6 +149,8 @@ describe("Moderation delete event confirmation", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Feedback" }));
 
+    expect(await screen.findByRole("button", { name: "Unaddressed (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Addressed (1)" })).toBeInTheDocument();
     expect(await screen.findByText("Please improve the landing page copy.")).toBeInTheDocument();
     expect(screen.queryByText("Already handled.")).not.toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
@@ -159,9 +161,11 @@ describe("Moderation delete event confirmation", () => {
       expect(FeedbackService.updateStatus).toHaveBeenCalledWith("feedback-1", true);
     });
 
+    expect(screen.getByRole("button", { name: "Unaddressed (0)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Addressed (2)" })).toBeInTheDocument();
     expect(screen.getByText("No unaddressed feedback right now.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Addressed" }));
+    fireEvent.click(screen.getByRole("button", { name: "Addressed (2)" }));
 
     expect(await screen.findByText("Already handled.")).toBeInTheDocument();
     expect(screen.getByText("Please improve the landing page copy.")).toBeInTheDocument();
