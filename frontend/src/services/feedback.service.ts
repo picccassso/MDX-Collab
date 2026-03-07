@@ -1,10 +1,22 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { db } from "./firebase";
-import type { FeedbackSubmission } from "../types/feedback";
+import { functions } from "./firebase";
+import type { FeedbackEntry, FeedbackSubmission } from "../types/feedback";
 
 const FEEDBACK_COLLECTION = "feedback";
 const MAX_SUBJECT_LENGTH = 80;
 const MAX_MESSAGE_LENGTH = 2000;
+
+type ListFeedbackResult = {
+  status: string;
+  feedback: FeedbackEntry[];
+};
+
+const listFeedbackCallable = httpsCallable<Record<string, never>, ListFeedbackResult>(
+  functions,
+  "listFeedback",
+);
 
 function sanitizeField(value: string, maxLength: number): string {
   return value.trim().slice(0, maxLength);
@@ -39,5 +51,10 @@ export const FeedbackService = {
       contextLabel,
       createdAt: serverTimestamp(),
     });
+  },
+
+  async list(): Promise<FeedbackEntry[]> {
+    const result = await listFeedbackCallable({});
+    return result.data.feedback ?? [];
   },
 };

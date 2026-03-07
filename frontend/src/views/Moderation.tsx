@@ -5,15 +5,17 @@ import {
   type CollaborationCursor,
 } from "../services/collaboration.service";
 import { EventService } from "../services/event.service";
+import { FeedbackService } from "../services/feedback.service";
 import { PollService } from "../services/poll.service";
 import { useAuthStore } from "../stores/auth.store";
 import type { Collaboration } from "../types/collaboration";
 import type { EventItem, EventProposal } from "../types/event";
+import type { FeedbackEntry } from "../types/feedback";
 import type { PollSummary } from "../types/poll";
 import { formatDateShort, formatDateTime } from "../utils/date";
 import { getCollaborationCoverImageUrl } from "../utils/collaboration";
 
-type ModerationTab = "events" | "polls" | "collabs";
+type ModerationTab = "events" | "polls" | "collabs" | "feedback";
 
 const COLLABS_PAGE_SIZE = 20;
 
@@ -39,6 +41,9 @@ export default function Moderation() {
   const [collabsLoaded, setCollabsLoaded] = useState(false);
   const [collabsLoading, setCollabsLoading] = useState(false);
   const [collabsLoadingMore, setCollabsLoadingMore] = useState(false);
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackEntry[]>([]);
+  const [feedbackLoaded, setFeedbackLoaded] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const isAdmin = profile?.admin === true;
 
@@ -97,6 +102,33 @@ export default function Moderation() {
       cancelled = true;
     };
   }, [activeTab, collabsLoaded, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin || activeTab !== "feedback" || feedbackLoaded) return;
+
+    let cancelled = false;
+    setError(null);
+    setFeedbackLoading(true);
+
+    FeedbackService.list()
+      .then((items) => {
+        if (cancelled) return;
+        setFeedbackItems(items);
+        setFeedbackLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to load feedback.");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setFeedbackLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, feedbackLoaded, isAdmin]);
 
   if (authLoading) return null;
   if (!isAdmin) return <Navigate to="/" replace />;
@@ -254,6 +286,13 @@ export default function Moderation() {
           onClick={() => setActiveTab("collabs")}
         >
           Collabs
+        </button>
+        <button
+          className={`filter-pill ${activeTab === "feedback" ? "active" : ""}`}
+          type="button"
+          onClick={() => setActiveTab("feedback")}
+        >
+          Feedback
         </button>
       </div>
 
@@ -474,6 +513,39 @@ export default function Moderation() {
               {collabsLoadingMore ? "Loading..." : "Load More"}
             </button>
           )}
+        </div>
+      )}
+
+      {activeTab === "feedback" && (
+        <div className="mod-list">
+          <h2 className="event-title">Student Feedback</h2>
+          {!feedbackLoaded && feedbackLoading && (
+            <div className="empty-state">Loading feedback...</div>
+          )}
+          {feedbackLoaded && feedbackItems.length === 0 && (
+            <div className="empty-state">No feedback has been submitted yet.</div>
+          )}
+          {feedbackItems.map((item) => (
+            <article className="mod-card" key={item.id}>
+              <div className="mod-card__img b2" />
+              <div className="mod-card__body">
+                <h3 className="event-title">{item.subject}</h3>
+                <span className="event-date">Submitted {formatDateTime(item.createdAt)}</span>
+                <span className="mod-card__author">
+                  {item.userName || item.userEmail || item.uid}
+                </span>
+                {(item.userName || item.userEmail) && (
+                  <span className="mod-card__author">
+                    {item.userEmail || item.uid}
+                  </span>
+                )}
+                <span className="mod-card__author">
+                  {item.contextLabel || "General Feedback"} • {item.route || "-"}
+                </span>
+                <p className="collab-desc">{item.message}</p>
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </div>
