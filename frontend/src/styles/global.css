@@ -2933,6 +2933,50 @@ select {
   border-top: 1px solid var(--border);
 }
 
+.collab-photo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in srgb, #09101d 72%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.collab-photo-modal__panel {
+  width: min(100%, 460px);
+  padding: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface-overlay-strong);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+}
+
+.collab-photo-modal__panel h2 {
+  margin: 0 0 10px;
+}
+
+.collab-photo-modal__panel p {
+  margin: 0;
+  color: var(--text);
+}
+
+.collab-photo-modal__tips {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.collab-photo-modal__tips li + li {
+  margin-top: 8px;
+}
+
+.collab-photo-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 .collab-editor-actions {
   display: flex;
   align-items: center;

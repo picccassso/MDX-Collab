@@ -75,6 +75,7 @@ export default function CreateCollaboration() {
   const [selectedThumbnail, setSelectedThumbnail] = useState<ThumbnailDraft>(null);
   const [mediaWindow, setMediaWindow] = useState<MediaWindow>(DEFAULT_MEDIA_WINDOW);
   const [error, setError] = useState("");
+  const [showPhotoRequiredModal, setShowPhotoRequiredModal] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -96,6 +97,7 @@ export default function CreateCollaboration() {
     () => pendingFiles.filter((file) => !!file.previewUrl && isImageMimeType(file.file.type)),
     [pendingFiles],
   );
+  const hasAnyImage = existingImageFiles.length > 0 || newImageFiles.length > 0;
 
   const updateMediaWindow = (next: Partial<MediaWindow>) => {
     setMediaWindow((prev) => {
@@ -221,6 +223,9 @@ export default function CreateCollaboration() {
     }));
 
     setPendingFiles((prev) => [...prev, ...nextPending]);
+    if (nextPending.some((file) => !!file.previewUrl)) {
+      setShowPhotoRequiredModal(false);
+    }
     setSelectedThumbnail((current) => {
       if (current) return current;
       const firstNewImage = nextPending.find((file) => !!file.previewUrl);
@@ -356,6 +361,11 @@ export default function CreateCollaboration() {
       return;
     }
 
+    if (!isEditMode && !hasAnyImage) {
+      setShowPhotoRequiredModal(true);
+      return;
+    }
+
     setError("");
     setSaving(true);
     try {
@@ -434,6 +444,37 @@ export default function CreateCollaboration() {
 
   return (
     <div className="page-view">
+      {showPhotoRequiredModal && (
+        <div
+          className="collab-photo-modal"
+          role="presentation"
+          onClick={() => setShowPhotoRequiredModal(false)}
+        >
+          <div
+            className="collab-photo-modal__panel theme-surface"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="collab-photo-required-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="collab-photo-required-title">Photo required</h2>
+            <p>A photo is needed in order to publish a collab.</p>
+            <ul className="collab-photo-modal__tips">
+              <li>You can search the internet for relevant photos.</li>
+              <li>You may use Generative AI to generate photos for you.</li>
+            </ul>
+            <div className="collab-photo-modal__actions">
+              <button
+                className="btn-sm outline"
+                type="button"
+                onClick={() => setShowPhotoRequiredModal(false)}
+              >
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="topbar">
         <div className="topbar-title">
           <span>{isEditMode ? "Edit Collab" : "Post a Collab"}</span>
