@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CollabListItem from "../components/CollabListItem";
 import { CollaborationService } from "../services/collaboration.service";
 import { useAuthStore } from "../stores/auth.store";
 import type { Collaboration } from "../types/collaboration";
+import { getCollaborationSearchScore } from "../utils/collaboration";
 import { formatRelativeDate } from "../utils/date";
 import { buildDirectMessageHref } from "../utils/messaging";
 
@@ -19,8 +20,12 @@ function matchesFilter(collab: Collaboration, activeFilter: string): boolean {
 export default function Collaborations() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const searchRef = useRef<HTMLDivElement | null>(null);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,10 +36,28 @@ export default function Collaborations() {
       .finally(() => setLoading(false));
   }, []);
 
-  const visible = useMemo(
+  const filteredCollabs = useMemo(
     () => collabs.filter((collab) => matchesFilter(collab, activeFilter)),
     [collabs, activeFilter],
   );
+
+  const visible = useMemo(() => {
+    const query = deferredSearchQuery.trim();
+    if (!query) return filteredCollabs;
+
+    return filteredCollabs
+      .map((collab) => ({
+        collab,
+        score: getCollaborationSearchScore(collab, query),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => entry.collab);
+  }, [deferredSearchQuery, filteredCollabs]);
+
+  const quickResults = useMemo(() => visible.slice(0, 4), [visible]);
+  const hasActiveSearch = deferredSearchQuery.trim().length > 0;
+  const showSearchPanel = searchOpen && hasActiveSearch;
 
   const topTags = useMemo(() => {
     const counts = new Map<string, number>();
@@ -51,12 +74,57 @@ export default function Collaborations() {
           <span>Collabs</span>
         </div>
         <div className="topbar-actions">
-          <div className="search-bar">
-            <svg className="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input placeholder="Search collabs, skills" readOnly />
+          <div
+            ref={searchRef}
+            className={`collab-search ${showSearchPanel ? "is-open" : ""}`}
+            onBlur={(event) => {
+              if (!searchRef.current?.contains(event.relatedTarget as Node | null)) {
+                setSearchOpen(false);
+              }
+            }}
+          >
+            <div className="search-bar">
+              <svg className="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                placeholder="Search collabs, skills"
+                value={searchQuery}
+                onFocus={() => setSearchOpen(true)}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setSearchOpen(true);
+                }}
+                aria-label="Search collaborations"
+              />
+            </div>
+            <div className={`collab-search-panel ${showSearchPanel ? "is-visible" : ""}`}>
+              <div className="collab-search-panel__header">
+                <span>{visible.length} match{visible.length === 1 ? "" : "es"}</span>
+                <span>Local search only</span>
+              </div>
+              {quickResults.length > 0 ? (
+                <div className="collab-search-panel__list">
+                  {quickResults.map((collab) => (
+                    <button
+                      key={`search-${collab.id}`}
+                      type="button"
+                      className="collab-search-result"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => navigate(`/collaborations/${collab.id}`)}
+                    >
+                      <span className="collab-search-result__title">{collab.title}</span>
+                      <span className="collab-search-result__meta">
+                        {collab.tags.slice(0, 2).join(" • ") || "Open collaboration"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="collab-search-panel__empty">No collabs match that search yet.</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -85,7 +153,11 @@ export default function Collaborations() {
           {loading && <div className="empty-state">Loading collaborations...</div>}
           {error && <div className="auth-error">{error}</div>}
           {!loading && !error && visible.length === 0 && (
-            <div className="empty-state">No collaborations match the selected filter.</div>
+            <div className="empty-state">
+              {hasActiveSearch ?
+                "No collaborations match your search." :
+                "No collaborations match the selected filter."}
+            </div>
           )}
 
           {visible.map((collab) => (
