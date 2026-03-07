@@ -257,6 +257,108 @@ select {
   gap: 6px;
 }
 
+.sidebar-feedback,
+.mobile-feedback-block {
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar-feedback {
+  margin-bottom: 8px;
+  padding: 4px;
+}
+
+.sidebar-feedback__trigger {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  padding: 10px 8px;
+  color: var(--text);
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-feedback__trigger:hover,
+.sidebar-feedback__trigger:focus-visible {
+  background: var(--bg3);
+  transform: translateY(-1px);
+}
+
+.sidebar-feedback__trigger:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+.sidebar-feedback__eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+.sidebar-feedback__copy {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted2);
+}
+
+.sidebar-feedback__notice {
+  white-space: normal;
+}
+
+.feedback-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--theme-shadow-ink) 42%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.feedback-overlay__panel {
+  width: min(100%, 640px);
+  padding: 24px;
+  display: grid;
+  gap: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.feedback-overlay__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.feedback-overlay__form {
+  display: grid;
+  gap: 16px;
+}
+
+.feedback-overlay__textarea {
+  min-height: 160px;
+}
+
+.feedback-overlay__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feedback-overlay__count {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .mobile-main-content {
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
@@ -373,6 +475,12 @@ select {
   display: flex;
   align-items: center;
   gap: 9px;
+}
+
+.mobile-feedback-block {
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
 }
 
 .mobile-more-links {
@@ -3397,6 +3505,20 @@ select {
 
   .topbar-title {
     font-size: 15px;
+  }
+
+  .feedback-overlay {
+    padding: 16px;
+  }
+
+  .feedback-overlay__panel {
+    padding: 18px;
+  }
+
+  .feedback-overlay__header,
+  .feedback-overlay__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-hero,
