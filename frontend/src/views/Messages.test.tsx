@@ -172,6 +172,42 @@ describe("Messages", () => {
     });
   });
 
+  it("scrolls the thread to the newest message when messages update", async () => {
+    renderMessages("/messages/direct_user-1_user-2", 1280);
+
+    const thread = document.querySelector(".chat-messages") as HTMLDivElement | null;
+    expect(thread).not.toBeNull();
+    if (!thread) return;
+
+    Object.defineProperty(thread, "scrollHeight", {
+      configurable: true,
+      value: 480,
+    });
+    thread.scrollTop = 0;
+
+    act(() => {
+      useMessagingStore.setState((state) => ({
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            id: "m2",
+            senderId: "user-2",
+            senderType: "user",
+            text: "Just following up with another message.",
+            createdAt: NOW,
+            editedAt: null,
+            status: "sent",
+          },
+        ],
+      }));
+    });
+
+    await waitFor(() => {
+      expect(thread.scrollTop).toBe(480);
+    });
+  });
+
   it("shows the AI chatbot with a working input", () => {
     renderMessages("/messages/ai-assistant", 1280);
 

@@ -241,6 +241,18 @@ function ConversationThread({
   sending: boolean;
 }) {
   const isAiConversation = conversation.id === AI_CONVERSATION_ID;
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = messagesRef.current;
+    if (!container) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [conversation.id, error, loading, messages, sending]);
 
   return (
     <section className="chat-main">
@@ -261,7 +273,7 @@ function ConversationThread({
         </div>
       </div>
 
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesRef}>
         {loading && <div className="chat-thread-empty">Loading messages...</div>}
         {error && <div className="chat-thread-empty">{error}</div>}
         {!loading && !error && messages.length === 0 && (
@@ -617,7 +629,7 @@ export default function Messages() {
   const showingThreadOnMobile = isMobile && !!selectedConversationId;
 
   return (
-    <div className="page-view">
+    <div className="page-view messages-page-view">
       <div className="topbar">
         <div className="topbar-title">
           <span>Messages</span>
