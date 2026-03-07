@@ -92,6 +92,15 @@ type ClosePollPayload = {
   pollId?: unknown;
 };
 
+type SubmitFeedbackPayload = {
+  subject?: unknown;
+  message?: unknown;
+  route?: unknown;
+  contextLabel?: unknown;
+  userName?: unknown;
+  userEmail?: unknown;
+};
+
 type FeedbackDoc = {
   uid?: unknown;
   userName?: unknown;
@@ -551,6 +560,38 @@ export const listFeedback = onCall({
       };
     }),
   };
+});
+
+export const submitFeedback = onCall({
+  region: "europe-west1",
+  cors: true,
+  invoker: "public",
+}, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Authentication required.");
+  }
+
+  const data = request.data as SubmitFeedbackPayload;
+  const subject = asNonEmptyString(data.subject, "subject", 80);
+  const message = asNonEmptyString(data.message, "message", 2000);
+  const route = asOptionalString(data.route, 200);
+  const contextLabel = asOptionalString(data.contextLabel, 80);
+  const userName = asOptionalString(data.userName, 120);
+  const userEmail = asOptionalString(data.userEmail, 180);
+
+  await db.collection("feedback").add({
+    uid,
+    userName: userName || null,
+    userEmail: userEmail || null,
+    subject,
+    message,
+    route,
+    contextLabel,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  return {status: "ok"};
 });
 
 export const publishPoll = onCall({

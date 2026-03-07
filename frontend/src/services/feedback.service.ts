@@ -1,10 +1,7 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { db } from "./firebase";
 import { functions } from "./firebase";
 import type { FeedbackEntry, FeedbackSubmission } from "../types/feedback";
 
-const FEEDBACK_COLLECTION = "feedback";
 const MAX_SUBJECT_LENGTH = 80;
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -13,9 +10,27 @@ type ListFeedbackResult = {
   feedback: FeedbackEntry[];
 };
 
+type SubmitFeedbackPayload = {
+  subject: string;
+  message: string;
+  route: string;
+  contextLabel: string;
+  userName?: string;
+  userEmail?: string;
+};
+
+type SubmitFeedbackResult = {
+  status: string;
+};
+
 const listFeedbackCallable = httpsCallable<Record<string, never>, ListFeedbackResult>(
   functions,
   "listFeedback",
+);
+
+const submitFeedbackCallable = httpsCallable<SubmitFeedbackPayload, SubmitFeedbackResult>(
+  functions,
+  "submitFeedback",
 );
 
 function sanitizeField(value: string, maxLength: number): string {
@@ -41,15 +56,13 @@ export const FeedbackService = {
       throw new Error("Enter some feedback before sending.");
     }
 
-    await addDoc(collection(db, FEEDBACK_COLLECTION), {
-      uid: submission.uid.trim(),
-      userName: submission.userName?.trim() || null,
-      userEmail: submission.userEmail?.trim() || null,
+    await submitFeedbackCallable({
       subject,
       message,
       route,
       contextLabel,
-      createdAt: serverTimestamp(),
+      userName: submission.userName?.trim(),
+      userEmail: submission.userEmail?.trim(),
     });
   },
 

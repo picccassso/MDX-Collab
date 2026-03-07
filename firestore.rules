@@ -77,14 +77,7 @@ service cloud.firestore {
 
     match /feedback/{feedbackId} {
       allow read: if false;
-      allow create: if signedIn() &&
-        request.resource.data.uid == request.auth.uid &&
-        request.resource.data.subject is string &&
-        request.resource.data.subject.size() > 0 &&
-        request.resource.data.message is string &&
-        request.resource.data.message.size() > 0 &&
-        request.resource.data.route is string &&
-        request.resource.data.contextLabel is string;
+      allow create: if false;
       allow update, delete: if false;
     }
 
