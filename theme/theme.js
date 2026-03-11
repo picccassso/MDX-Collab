@@ -22,13 +22,13 @@
   };
   const HEX_COLOR_PATTERN = /^#?[0-9a-fA-F]{6}$/;
   let themeTransitionTimer = null;
-  let currentPreference = "system";
+  let currentPreference = "light";
   let currentResolvedTheme = "light";
   let currentCustomThemes = [];
   let currentActiveCustomThemeId = null;
 
   function normalizePreference(value) {
-    return VALID_PREFERENCES.has(value) ? value : "system";
+    return VALID_PREFERENCES.has(value) ? value : "light";
   }
 
   function normalizeHexColor(value) {
@@ -208,7 +208,7 @@
     try {
       return normalizePreference(window.localStorage.getItem(STORAGE_KEY));
     } catch (_error) {
-      return "system";
+      return "light";
     }
   }
 

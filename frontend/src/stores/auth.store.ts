@@ -123,7 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     const previous = {
-      themePreference: profile.themePreference ?? "system",
+      themePreference: profile.themePreference ?? "light",
       activeCustomThemeId: profile.activeCustomThemeId ?? null,
     };
     set({

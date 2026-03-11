@@ -61,7 +61,7 @@ describe("theme store", () => {
     document.documentElement.removeAttribute("style");
     useThemeStore.setState({
       hydrated: false,
-      preference: "system",
+      preference: "light",
       resolvedTheme: "light",
       customThemes: [],
       activeCustomThemeId: null,
@@ -70,12 +70,12 @@ describe("theme store", () => {
     mockThemeMatchMedia(false);
   });
 
-  it("hydrates guest theme from system preference when nothing is stored", () => {
+  it("hydrates guest theme from light preference when nothing is stored", () => {
     act(() => {
       useThemeStore.getState().hydrate();
     });
 
-    expect(useThemeStore.getState().preference).toBe("system");
+    expect(useThemeStore.getState().preference).toBe("light");
     expect(useThemeStore.getState().resolvedTheme).toBe("light");
     expect(useThemeStore.getState().customThemes).toEqual([]);
     expect(useThemeStore.getState().activeCustomThemeId).toBeNull();
@@ -160,7 +160,7 @@ describe("theme store", () => {
     expect(window.localStorage.getItem(ACTIVE_CUSTOM_THEME_STORAGE_KEY)).toBeNull();
   });
 
-  it("resets to the default guest system theme", () => {
+  it("resets to the default guest light theme", () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, "dark");
     window.localStorage.setItem(CUSTOM_THEME_STORAGE_KEY, JSON.stringify(CUSTOM_THEMES));
     window.localStorage.setItem(ACTIVE_CUSTOM_THEME_STORAGE_KEY, "night-shift");
@@ -170,11 +170,11 @@ describe("theme store", () => {
       useThemeStore.getState().resetToGuestDefault();
     });
 
-    expect(useThemeStore.getState().preference).toBe("system");
+    expect(useThemeStore.getState().preference).toBe("light");
     expect(useThemeStore.getState().resolvedTheme).toBe("light");
     expect(useThemeStore.getState().customThemes).toEqual([]);
     expect(useThemeStore.getState().activeCustomThemeId).toBeNull();
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("system");
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
     expect(window.localStorage.getItem(CUSTOM_THEME_STORAGE_KEY)).toBeNull();
     expect(window.localStorage.getItem(ACTIVE_CUSTOM_THEME_STORAGE_KEY)).toBeNull();
     expect(document.documentElement.dataset.theme).toBe("light");

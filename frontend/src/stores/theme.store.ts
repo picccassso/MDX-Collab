@@ -70,7 +70,7 @@ function commitThemeStateWithAnimation(
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
   hydrated: false,
-  preference: "system",
+  preference: "light",
   resolvedTheme: "light",
   customThemes: [],
   activeCustomThemeId: null,
@@ -86,7 +86,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       });
     }
 
-    const initialPreference = readStoredThemePreference() ?? "system";
+    const initialPreference = readStoredThemePreference() ?? "light";
     const initialCustomThemes = readStoredCustomThemes();
     const initialActiveCustomThemeId = readStoredActiveCustomThemeId();
     const nextState = commitThemeState(initialPreference, initialCustomThemes, initialActiveCustomThemeId, {
@@ -96,7 +96,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   resetToGuestDefault: () => {
-    const nextState = commitThemeStateWithAnimation("system", [], null);
+    const nextState = commitThemeStateWithAnimation("light", [], null);
     set({ ...nextState, sessionTheme: null, hydrated: true });
   },
 

@@ -55,7 +55,7 @@ async function ensureUserDoc(user: User): Promise<UserProfile> {
     username: user.displayName ?? undefined,
     nickname: "",
     description: "",
-    themePreference: "system",
+    themePreference: "light",
     createdAt: serverTimestamp(),
   };
 
@@ -80,7 +80,7 @@ export const AuthService = {
       username: username ?? null,
       nickname: "",
       description: "",
-      themePreference: "system",
+      themePreference: "light",
       createdAt: serverTimestamp(),
     });
     return cred;

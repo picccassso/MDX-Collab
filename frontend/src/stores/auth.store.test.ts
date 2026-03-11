@@ -69,7 +69,7 @@ describe("auth store sign out", () => {
 
     useThemeStore.setState({
       hydrated: false,
-      preference: "system",
+      preference: "light",
       resolvedTheme: "light",
       customThemes: [],
       activeCustomThemeId: null,
@@ -82,7 +82,7 @@ describe("auth store sign out", () => {
     });
   });
 
-  it("resets the theme to the guest system default on sign out", async () => {
+  it("resets the theme to the guest light default on sign out", async () => {
     act(() => {
       useThemeStore.getState().hydrate();
       useThemeStore.getState().setCustomThemes(CUSTOM_THEMES, "night-shift");
@@ -101,11 +101,11 @@ describe("auth store sign out", () => {
     });
 
     expect(authServiceMock.signOut).toHaveBeenCalledTimes(1);
-    expect(useThemeStore.getState().preference).toBe("system");
+    expect(useThemeStore.getState().preference).toBe("light");
     expect(useThemeStore.getState().resolvedTheme).toBe("light");
     expect(useThemeStore.getState().customThemes).toEqual([]);
     expect(useThemeStore.getState().activeCustomThemeId).toBeNull();
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("system");
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
     expect(window.localStorage.getItem(CUSTOM_THEME_STORAGE_KEY)).toBeNull();
     expect(window.localStorage.getItem(ACTIVE_CUSTOM_THEME_STORAGE_KEY)).toBeNull();
   });
